@@ -1,0 +1,20 @@
+# Bauhaus uni is university
+<http://www.wikidata.org/entity/Q573975> <http://www.wikidata.org/prop/direct/P31> <http://www.wikidata.org/entity/Q3918> .
+# Bauhaus uni is located in Weimar
+<http://www.wikidata.org/entity/Q573975> <http://www.wikidata.org/prop/direct/P131> <http://www.wikidata.org/entity/Q3955> .
+# Weimar is located in Germany
+<http://www.wikidata.org/entity/Q3955> <http://www.wikidata.org/prop/direct/P17> <http://www.wikidata.org/entity/Q183> .
+# Bauhaus uni teaches art
+<http://www.wikidata.org/entity/Q573975> _:teaches <http://www.wikidata.org/entity/Q735> .
+# Bauhaus uni teaches technics
+<http://www.wikidata.org/entity/Q573975> _:teaches <http://www.wikidata.org/entity/Q23001701> .
+# Bauhaus uni founded in 1860
+<http://www.wikidata.org/entity/Q573975> <http://www.wikidata.org/prop/direct/P571> <http://www.wikidata.org/entity/Q7691> .
+# Bauhaus uni has alternative name
+<http://www.wikidata.org/entity/Q573975> <http://www.wikidata.org/prop/direct/P4970> "Great Ducal Saxon Art School" .
+# Bauhaus uni has alternative name
+<http://www.wikidata.org/entity/Q573975> <http://www.wikidata.org/prop/direct/P4970> "Bauhaus" .
+# Bauhaus uni has director Walter Gropius
+<http://www.wikidata.org/entity/Q573975> <http://www.wikidata.org/prop/direct/P1037> <http://www.wikidata.org/entity/Q61071> .
+# Bauhaus uni has 4000 students
+<http://www.wikidata.org/entity/Q573975> <http://www.wikidata.org/prop/direct/P2196> 4000 .
