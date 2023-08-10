@@ -10,6 +10,8 @@ transformers==4.30.2
 torch==2.0.1
 databind==4.4.0
 stanford_openie
-allennlp
+allennlp~=2.10.1
 allennlp-models
-elasticsearch
+elasticsearch==7.17.9
+pyyaml==6.0.1
+nltk~=3.8.1
