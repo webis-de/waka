@@ -8,21 +8,18 @@ from waka.nlp.relation_extraction import RebelExtractor, MRebelExtractor
 from waka.nlp.text_processor import TextProcessor
 
 
-class RelationLinker(TextProcessor, metaclass=abc.ABCMeta):
+class RelationLinker(TextProcessor[List[Triple], List[Triple]], metaclass=abc.ABCMeta):
     pass
 
 
 class ElasticRelationLinker(RelationLinker):
 
     def __init__(self):
-        self.relation_extractor = MRebelExtractor()
-
         self.search_endpoint = "https://metareal-kb.web.webis.de/api/v1/kb/property/search"
 
-    def process(self, text: str) -> List[Triple]:
+    def process(self, triples: List[Triple]) -> List[Triple]:
         cache = {}
         headers = {"accept": "application/json"}
-        triples = self.relation_extractor.process(text)
 
         for triple in triples:
             retrieved_properties = []

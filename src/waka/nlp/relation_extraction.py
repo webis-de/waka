@@ -12,7 +12,7 @@ from waka.nlp.kg import Triple, Resource, Property, Entity
 from waka.nlp.text_processor import TextProcessor
 
 
-class RelationExtractor(TextProcessor, metaclass=ABCMeta):
+class RelationExtractor(TextProcessor[str, Triple], metaclass=ABCMeta):
     pass
 
 

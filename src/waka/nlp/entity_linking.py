@@ -8,28 +8,22 @@ from waka.nlp.kg import Entity, Triple
 from waka.nlp.text_processor import TextProcessor
 
 
-class EntityLinker(TextProcessor, metaclass=abc.ABCMeta):
+class EntityLinker(TextProcessor[List[Entity], List[Entity]], metaclass=abc.ABCMeta):
     pass
 
 
 class ElasticEntityLinker(EntityLinker):
     def __init__(self):
-        self.entity_recognizer = SpacyNER()
-
         self.search_endpoint = "https://metareal-kb.web.webis.de/api/v1/kb/entity/search"
 
-    def process(self, text: str) -> Optional[List[Entity | Triple]]:
+    def process(self, in_data: List[Entity]) -> List[Entity]:
         cache = {}
         linked_entities = []
 
-        entities = self.entity_recognizer.process(text)
         headers = {"accept": "application/json"}
 
-        for entity in entities:
+        for entity in in_data:
             retrieved_entities = []
-
-            if self.entity_recognizer.get_entity_type(entity) == EntityType.LITERAL:
-                continue
 
             if entity.text in cache:
                 retrieved_entities.extend(cache[entity.text])
