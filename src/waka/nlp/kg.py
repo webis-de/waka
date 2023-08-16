@@ -2,17 +2,16 @@ from __future__ import annotations
 
 import abc
 import logging
-from typing import Optional, List, Dict
-from databind.core.dataclasses import dataclass
+from typing import Optional, List, Any
+
 from databind.json import dumps
+from pydantic.dataclasses import dataclass
 
 
-@dataclass
 class GenericItem(metaclass=abc.ABCMeta):
     text: Optional[str]
 
-    def __init__(self,
-                 text: Optional[str] = None):
+    def __init__(self, text: Optional[str] = None):
         self.text = text
 
     def to_json(self) -> str:
@@ -27,6 +26,7 @@ class Resource(GenericItem):
     url: Optional[str]
     start_idx: Optional[int]
     end_idx: Optional[int]
+    text: Optional[str]
 
     def __init__(self,
                  url: Optional[str] = None,
@@ -38,15 +38,14 @@ class Resource(GenericItem):
         self.url = url
         self.start_idx = start_idx
         self.end_idx = end_idx
-        self.text = text
 
 
 @dataclass
 class Entity(Resource):
-    label: Optional[str]
+    label: Optional[str] = None
     start_idx: Optional[int]
     end_idx: Optional[int]
-    type: Optional[str]
+    type: Optional[str] = None
     score: Optional[float] = None
 
     def __init__(self, url: Optional[str] = None,
@@ -68,9 +67,9 @@ class Entity(Resource):
 class Property(GenericItem):
     url: Optional[str]
 
-    def __init__(self, url: Optional[str] = None, text: Optional[str] = None):
-        self.url = url
+    def __init__(self, url: Optional[str] = None, text: Optional[str] = None, **kwargs: Any):
         super().__init__(text)
+        self.url = url
 
 
 @dataclass
@@ -79,9 +78,9 @@ class Triple:
     predicate: Optional[Property]
     object: Optional[Resource]
 
-    def __init__(self, subject: Optional[Resource] = None,
-                 predicate: Optional[Property] = None,
-                 object: Optional[Resource] = None):
+    def __init__(self, subject: Optional[Resource] = None, predicate: Optional[Property] = None,
+                 object: Optional[Resource] = None, **kwargs: Any):
+        super().__init__(**kwargs)
         self.subject = subject
         self.predicate: Optional[Property] = predicate
         self.object: Optional[Resource] = object
@@ -95,12 +94,11 @@ class Triple:
 
 @dataclass
 class KnowledgeGraph:
-    text: str
-    triples: List[Triple]
+    text: Optional[str]
+    triples: Optional[List[Triple]]
 
-    def __init__(self,
-                 text: str,
-                 triples: Optional[List[Triple]] = None):
+    def __init__(self, text: str, triples: Optional[List[Triple]] = None, **kwargs: Any):
+        super().__init__(**kwargs)
         self.text = text
 
         if triples is not None:

@@ -4,6 +4,7 @@ from typing import List
 from waka.nlp.entity_linking import ElasticEntityLinker
 from waka.nlp.entity_recognition import SpacyNER
 from waka.nlp.kg import KnowledgeGraph, Entity, Triple
+from waka.nlp.kg_constructor import KnowledgeGraphConstructor
 from waka.nlp.relation_extraction import OpenIEExtractor, MRebelExtractor
 from waka.nlp.relation_linking import ElasticRelationLinker
 from waka.nlp.text_processor import Pipeline
@@ -22,21 +23,8 @@ def main():
            "2019 the university celebrated the centenary of the founding of the Bauhaus, together with partners all " \
            "over the world."
 
-    el_pipeline = Pipeline[List[Entity]]()
-    el_pipeline.add_processor(SpacyNER())
-    el_pipeline.add_processor(ElasticEntityLinker())
-
-    entities = el_pipeline.process(text)
-
-    rl_pipeline = Pipeline[List[Triple]]()
-    rl_pipeline.add_processor(MRebelExtractor())
-    rl_pipeline.add_processor(ElasticRelationLinker())
-
-    triples = rl_pipeline.process(text)
-
-    kg_builder = KnowledgeGraph.Builder(text, triples, entities)
-    kg = kg_builder.build()
-    print(kg)
+    kg_construct = KnowledgeGraphConstructor()
+    print(kg_construct.construct("The Bauhaus-Universität Weimar is a university located in Weimar, Germany.").to_json())
 
 
 if __name__ == '__main__':

@@ -1,10 +1,9 @@
 import abc
-from typing import Optional, List
+from typing import List
 
 import requests
 
-from waka.nlp.entity_recognition import SpacyNER, EntityType
-from waka.nlp.kg import Entity, Triple
+from waka.nlp.kg import Entity
 from waka.nlp.text_processor import TextProcessor
 
 

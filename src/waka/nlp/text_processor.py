@@ -1,8 +1,6 @@
 import abc
 from typing import Optional, List, TypeVar, Generic
 
-from waka.nlp.kg import Entity, Triple
-
 IN = TypeVar("IN")
 OUT = TypeVar("OUT")
 
