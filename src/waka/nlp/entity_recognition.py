@@ -1,4 +1,5 @@
 import abc
+import logging
 from typing import List
 from enum import Enum
 import spacy
@@ -21,6 +22,7 @@ class EntityRecognizer(TextProcessor, metaclass=abc.ABCMeta):
 class SpacyNER(EntityRecognizer):
 
     def __init__(self):
+        logging.info("Loading SpacyNER...")
         self.nlp = spacy.load("en_core_web_sm")
         self.literal_types = {"PERCENT", "MONEY", "QUANTITY", "ORDINAL", "CARDINAL"}
 

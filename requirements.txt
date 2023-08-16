@@ -1,17 +1,15 @@
-fastapi==0.98.0
-pydantic==1.10.9
+fastapi==0.101.1
+pydantic==2.1.1
 requests==2.31.0
-spacy==3.5.3
-tqdm==4.65.0
-uvicorn==0.22.0
-spacyfishing==0.1.8
-spacyopentapioca==0.1.7
-transformers==4.30.2
-torch==2.0.1
+spacy~=3.6.1
+tqdm==4.66.1
+uvicorn==0.23.2
+transformers==4.31.0
+torch~=2.0.1
 databind==4.4.0
 stanford_openie
-allennlp~=2.10.1
-allennlp-models
+# allennlp
+# allennlp-models
 elasticsearch==7.17.9
 pyyaml==6.0.1
 nltk~=3.8.1

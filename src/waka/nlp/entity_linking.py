@@ -40,12 +40,12 @@ class ElasticEntityLinker(EntityLinker):
 
                 for e in retrieved_entities:
                     linked_entities.append(Entity(
-                        e["id"],
-                        entity.start_idx,
-                        entity.end_idx,
-                        entity.text,
-                        e["label"],
-                        e["score"],
-                        entity.type))
+                        url=e["id"],
+                        start_idx=entity.start_idx,
+                        end_idx=entity.end_idx,
+                        text=entity.text,
+                        label=e["label"],
+                        score=e["score"],
+                        e_type=entity.type))
 
         return linked_entities

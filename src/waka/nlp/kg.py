@@ -59,15 +59,16 @@ class Entity(Resource):
 
     @staticmethod
     def from_resource(resource: Resource) -> Entity:
-        return Entity(resource.url, resource.start_idx, resource.end_idx,
-                      resource.text, None)
+        return Entity(url=resource.url, start_idx=resource.start_idx, end_idx=resource.end_idx,
+                      text=resource.text)
 
 
 @dataclass
 class Property(GenericItem):
     url: Optional[str]
+    text: Optional[str]
 
-    def __init__(self, url: Optional[str] = None, text: Optional[str] = None, **kwargs: Any):
+    def __init__(self, url: Optional[str] = None, text: Optional[str] = None):
         super().__init__(text)
         self.url = url
 
@@ -160,7 +161,7 @@ class KnowledgeGraph:
             for mention, entity in entities_by_mention.items():
                 entities_by_mention[mention] = sorted(entities_by_mention[mention], key=lambda e: -e.score, )
 
-            kg = KnowledgeGraph(self.text)
+            kg = KnowledgeGraph(text=self.text, triples=[])
             for triple in self.triples:
                 if triple.subject.text in entities_by_mention:
                     triple.subject = entities_by_mention[triple.subject.text][0]

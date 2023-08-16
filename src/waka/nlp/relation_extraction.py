@@ -1,3 +1,4 @@
+import logging
 from abc import ABCMeta
 import re
 from abc import ABCMeta
@@ -6,7 +7,7 @@ from typing import List, Optional
 
 from transformers import pipeline
 from openie import StanfordOpenIE
-from allennlp.predictors.predictor import Predictor
+# from allennlp.predictors.predictor import Predictor
 
 from waka.nlp.kg import Triple, Resource, Property, Entity
 from waka.nlp.text_processor import TextProcessor
@@ -105,6 +106,7 @@ class RebelExtractor(RelationExtractor):
 
 class MRebelExtractor(RelationExtractor):
     def __init__(self):
+        logging.info("Loading MREbel...")
         self.extractor = pipeline('translation_xx_to_yy', model='Babelscape/mrebel-large',
                                   tokenizer='Babelscape/mrebel-large')
 
@@ -135,7 +137,7 @@ class MRebelExtractor(RelationExtractor):
                 if relation != '':
                     triplets.append(Triple(
                         MRebelExtractor.get_resource(subject.strip(), original_text, substr_indices),
-                        Property(None, relation.strip()),
+                        Property(url=None, text=relation.strip()),
                         MRebelExtractor.get_resource(object_.strip(), original_text, substr_indices)))
                     relation = ''
                 subject = ''
@@ -145,7 +147,7 @@ class MRebelExtractor(RelationExtractor):
                     if relation != '':
                         triplets.append(Triple(
                             MRebelExtractor.get_resource(subject.strip(), original_text, substr_indices),
-                            Property(None, relation.strip()),
+                            Property(url=None, text=relation.strip()),
                             MRebelExtractor.get_resource(object_.strip(), original_text, substr_indices)))
                     object_ = ''
                     subject_type = token[1:-1]
@@ -164,7 +166,7 @@ class MRebelExtractor(RelationExtractor):
             triplets.append(
                 Triple(
                     MRebelExtractor.get_resource(subject.strip(), original_text, substr_indices),
-                    Property(None, relation.strip()),
+                    Property(url=None, text=relation.strip()),
                     MRebelExtractor.get_resource(object_.strip(), original_text, substr_indices)))
         return triplets
 
@@ -178,28 +180,28 @@ class MRebelExtractor(RelationExtractor):
         if len(substr_indices[token]) == 0:
             del substr_indices[token]
 
-        return Resource(text=token, start_idx=start_idx, end_idx=start_idx + len(token))
+        return Resource(url=None, text=token, start_idx=start_idx, end_idx=start_idx + len(token))
 
 
-class OpenIEExtractor(RelationExtractor):
-    def __init__(self):
-        properties = {
-            'openie.affinity_probability_cap': 1 / 3,
-            "openie.triple.strict": True
-        }
-
-        self.client = StanfordOpenIE(properties=properties)
-        self.client.annotate("dummy")
-        model_url = "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2020.02.27.tar.gz"
-        self.predictor = Predictor.from_path(model_url)
-
-    def process(self, text: str) -> Optional[List[Triple]]:
-        prediction = self.predictor.predict(document=text)
-
-        document, clusters = prediction['document'], prediction['clusters']
-        resolved_text = self.predictor.coref_resolved(text)
-
-        triples = self.client.annotate(resolved_text)
-
-        for triple in triples:
-            print(triple)
+# class OpenIEExtractor(RelationExtractor):
+#     def __init__(self):
+#         properties = {
+#             'openie.affinity_probability_cap': 1 / 3,
+#             "openie.triple.strict": True
+#         }
+#
+#         self.client = StanfordOpenIE(properties=properties)
+#         self.client.annotate("dummy")
+#         model_url = "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2020.02.27.tar.gz"
+#         self.predictor = Predictor.from_path(model_url)
+#
+#     def process(self, text: str) -> Optional[List[Triple]]:
+#         prediction = self.predictor.predict(document=text)
+#
+#         document, clusters = prediction['document'], prediction['clusters']
+#         resolved_text = self.predictor.coref_resolved(text)
+#
+#         triples = self.client.annotate(resolved_text)
+#
+#         for triple in triples:
+#             print(triple)

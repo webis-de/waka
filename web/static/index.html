@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WAKA</title>
+    <link rel="stylesheet" href="css/main.css" type="text/css">
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="js/main.js"></script>
+</head>
+<body>
+<div id="content-wrapper">
+    <header id="site-header" class="nav-elements">
+        <div id="header-content">
+            <span class="nav-font" id="header-title">WAKA</span>
+            <span class="nav-font" id="header-subtitle"><b>W</b>ebis <b>A</b>ssisted <b>K</b>nowledge Graph <b>A</b>uthoring</span>
+        </div>
+    </header>
+
+    <main id="main-content-container">
+        <div id="main-content">
+            <section id="text-editor-container" class="section-container">
+                <h1 class="section-heading">Text Editor</h1>
+                <div id="text-editor" contenteditable="true" role="textbox">
+                    The Bauhaus-Universität Weimar is a university located in Weimar, Germany.
+                </div>
+                <div id="text-editor-button-container">
+                    <button id="create-kg-button">Create Knowledge Graph</button>
+                    <div id="loading-ring" class="lds-ring hidden"><div></div><div></div><div></div><div></div></div>
+                </div>
+
+            </section>
+
+            <section id="kg-vis-container" class="section-container">
+                <h1 class="section-heading">Knowledge Graph Visualization</h1>
+                <div id="kg-vis">
+
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="nav-elements" id="site-footer">
+        <div id="footer-content">
+            <span class="nav-font">&copy; 2023 Webis</span>
+        </div>
+    </footer>
+</div>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import uvicorn
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -22,6 +23,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount(
+    "/static",
+    StaticFiles(directory="web/static"),
+    name="static"
+)
+
 kg_construct = KnowledgeGraphConstructor()
 
 
@@ -30,7 +37,7 @@ class Text(BaseModel):
 
 
 @app.post("/api/v1/kg", response_model=KnowledgeGraph)
-async def get_kg(text: Text):
+async def get_kg(text: Text) -> KnowledgeGraph:
     return kg_construct.construct(text.content)
 
 

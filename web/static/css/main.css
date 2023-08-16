@@ -1,0 +1,163 @@
+body{
+    height: 100%;
+}
+
+#content-wrapper{
+    top: 0; left: 0;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-flow: column;
+    font-family: "Helvetica", serif;
+}
+
+.nav-elements{
+    background-color: #006B94;
+}
+
+#site-header {
+    width: 100%;
+}
+
+#site-footer{
+    position: fixed;
+    width: 100%;
+    left: 0;
+    bottom: 0;
+}
+
+#header-content {
+    padding: 20px;
+}
+
+#footer-content{
+    padding: 10px;
+}
+
+.nav-font {
+    color: white;
+    font-family: "Helvetica", serif;
+}
+
+#header-title {
+    font-size: 20pt;
+    font-weight: bold;
+}
+
+#header-subtitle {
+    margin-left: 20px;
+    font-size: 12pt;
+}
+
+#main-content-container{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-flow: column;
+    height: 100%;
+}
+
+#main-content {
+    width: 90%;
+    height: 100%;
+    display: flex;
+    flex-flow: column;
+    align-items: stretch;
+}
+
+.section-container {
+    margin-top: 20px;
+}
+
+#text-editor {
+    padding: 10px;
+    border: gray 1px solid;
+    border-radius: 5px;
+    font-family: "Courier", sans-serif;
+    font-size: 14pt;
+    min-height: 6em;
+    overflow-y: scroll;
+}
+
+#text-editor-button-container {
+    margin-top: 1em;
+}
+
+#kg-vis-container{
+    height: 70%;
+}
+
+#kg-vis {
+    border: gray 1px solid;
+    border-radius: 5px;
+    height: 100%;
+    background-color: white;
+}
+
+.hidden {
+    visibility: hidden;
+}
+
+.visible {
+    visibility: visible;
+}
+
+.entity {
+    background-color: rgb(0, 107, 148);
+    color: white;
+    font-weight: bold;
+}
+
+.entity:hover {
+    background-color: rgb(0, 107, 148, 0.5);
+}
+
+.vis-button {
+    filter: grayscale(100%);
+}
+
+.lds-ring {
+    display: inline;
+    position: relative;
+}
+
+.lds-ring div {
+    box-sizing: border-box;
+    display: inline;
+    position: absolute;
+    width: 1em;
+    height: 1em;
+    margin: 5px;
+    border: 3px solid;
+    border-radius: 50%;
+    animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    border-color: gray transparent transparent transparent;
+}
+
+.lds-ring div:nth-child(1) {
+    animation-delay: -0.45s;
+}
+
+.lds-ring div:nth-child(2) {
+    animation-delay: -0.3s;
+}
+
+.lds-ring div:nth-child(3) {
+    animation-delay: -0.15s;
+}
+
+@keyframes lds-ring {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+
+button {
+    font-size: 15pt;
+    font-family: "Helvetica", serif;
+}
