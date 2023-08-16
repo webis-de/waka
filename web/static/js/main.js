@@ -127,13 +127,29 @@ function onKgReceive(responseText){
 
     textEditor.innerHTML = editorContent
 
+    for (let entitySpan of textEditor.getElementsByClassName("entity")){
+        entitySpan.addEventListener("click", function (e){
+            console.log(e.target.getAttribute("href"))
+            window.open(e.target.getAttribute("href"), "_blank").focus()
+        })
+    }
+
     drawKG(kg)
+
+    // textEditor.setAttribute("contenteditable", false)
 }
 
 function createDOMElementFromEntity(entity){
     let entitySpan = document.createElement("span")
     entitySpan.innerText = entity.text
     entitySpan.classList.add("entity")
+    entitySpan.setAttribute("href", entity.url)
+
+    let entityDescription = document.createElement("span")
+    entityDescription.innerText = entity.url
+    entityDescription.classList.add("entity-description")
+    entitySpan.appendChild(entityDescription)
+
     return entitySpan
 }
 
