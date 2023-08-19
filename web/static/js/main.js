@@ -120,7 +120,7 @@ function onKgReceive(responseText){
         }
 
         editorContent += createDOMElementFromEntity(entity).outerHTML
-        idx = entity.end_idx + 1
+        idx = entity.end_idx
     }
 
     editorContent += kg.text.substring(idx)
