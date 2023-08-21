@@ -1,3 +1,10 @@
+:root {
+    --default-color: #006B94;
+    --default-font-color: white;
+    --default-font: "Helvetica", serif;
+    --highlight-color: rgb(0, 107, 148, 0.5)
+}
+
 body{
     height: 100%;
 }
@@ -9,11 +16,11 @@ body{
     height: 100%;
     display: flex;
     flex-flow: column;
-    font-family: "Helvetica", serif;
+    font-family: var(--default-font);
 }
 
 .nav-elements{
-    background-color: #006B94;
+    background-color: var(--default-color);
 }
 
 #site-header {
@@ -40,8 +47,8 @@ body{
 }
 
 .nav-font {
-    color: white;
-    font-family: "Helvetica", serif;
+    color: var(--default-font-color);
+    font-family: var(--default-font);
 }
 
 #header-title {
@@ -131,8 +138,8 @@ body{
 }
 
 .entity {
-    background-color: rgb(0, 107, 148);
-    color: white;
+    background-color: var(--default-color);
+    color: var(--default-font-color);
     font-weight: bold;
     position: relative;
     display: inline;
@@ -141,7 +148,11 @@ body{
 }
 
 .entity:hover {
-    background-color: rgb(0, 107, 148, 0.5);
+    background-color: var(--highlight-color);
+}
+
+.highlight {
+    background-color: var(--highlight-color);
 }
 
 .entity .entity-description{

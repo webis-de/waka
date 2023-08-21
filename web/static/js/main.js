@@ -112,27 +112,20 @@ function onKgReceive(responseText){
 
     let idx = 0
 
-    let editorContent = ""
+    textEditor.innerHTML = ""
     for(let entity of entities){
         let plain = kg.text.substring(idx, entity.start_idx)
         if(plain !== ""){
-            editorContent += plain
+            let textNode = document.createTextNode(plain)
+            textEditor.appendChild(textNode)
         }
 
-        editorContent += createDOMElementFromEntity(entity).outerHTML
+        textEditor.appendChild(createDOMElementFromEntity(entity))
         idx = entity.end_idx
     }
 
-    editorContent += kg.text.substring(idx)
-
-    textEditor.innerHTML = editorContent
-
-    for (let entitySpan of textEditor.getElementsByClassName("entity")){
-        entitySpan.addEventListener("click", function (e){
-            console.log(e.target.getAttribute("href"))
-            window.open(e.target.getAttribute("href"), "_blank").focus()
-        })
-    }
+    let textNode = document.createTextNode(kg.text.substring(idx))
+    textEditor.appendChild(textNode)
 
     drawKG(kg)
 
@@ -150,6 +143,10 @@ function createDOMElementFromEntity(entity){
     entityDescription.classList.add("entity-description")
     entitySpan.appendChild(entityDescription)
 
+    entitySpan.addEventListener("click", function (e){
+        window.open(e.target.getAttribute("href"), "_blank").focus()
+    })
+
     return entitySpan
 }
 
@@ -160,9 +157,9 @@ function createNodeFromEntity(entity){
         chosen: {
             node: function (values, id, selected, hovering) {
                 if (!hovering){
-                    values.color = "#006B94"
+                    values.color = getComputedStyle(document.documentElement).getPropertyValue("--default-color")
                 } else{
-                    values.color = "rgb(0, 107, 148, 0.5)"
+                    values.color = getComputedStyle(document.documentElement).getPropertyValue("--highlight-color")
                 }
             },
             label: function (values, id, selected, hovering) {
@@ -172,9 +169,10 @@ function createNodeFromEntity(entity){
             }
         },
         color: {
-            background: "#006B94",
+            border: "white",
+            background: getComputedStyle(document.documentElement).getPropertyValue("--default-color"),
             hover: {
-                background: "rgb(0, 107, 148, 0.5)"
+                background: getComputedStyle(document.documentElement).getPropertyValue("--highlight-color"),
             }
         },
         font: {
@@ -246,6 +244,22 @@ function drawKG(kg){
 
     network.on("stabilizationIterationsDone", function (){
         network.setOptions({physics: {enabled: false}})
+    })
+
+    network.on("hoverNode", function (e){
+        let entitySpans = document.querySelectorAll("[href=\""+ e.node + "\"]")
+
+        for (let entitySpan of entitySpans){
+            entitySpan.classList.add("highlight")
+        }
+    })
+
+    network.on("blurNode", function (e){
+        let entitySpans = document.querySelectorAll("[href=\""+ e.node + "\"]")
+
+        for (let entitySpan of entitySpans){
+            entitySpan.classList.remove("highlight")
+        }
     })
 }
 
