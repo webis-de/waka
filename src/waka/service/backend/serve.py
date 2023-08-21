@@ -42,7 +42,7 @@ async def get_kg(text: Text) -> KnowledgeGraph:
 
 
 def main():
-    host = "127.0.0.1"
+    host = "0.0.0.0"
     port = 8000
     uvicorn.run(app='serve:app', host=host,
                 port=port, reload=True)

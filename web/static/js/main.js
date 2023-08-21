@@ -4,6 +4,20 @@ function main(){
     let kgButton = document.getElementById("create-kg-button")
 
     kgButton.addEventListener("click", onKgButtonClicked)
+
+    let overlay = document.getElementById("overlay")
+    let overlayCloseButton = document.getElementById("overlay-close")
+    overlayCloseButton.addEventListener("click", function (){
+        let overlay = document.getElementById("overlay")
+        overlay.style.display = "none"
+    })
+
+    addEventListener("keydown", function (e){
+        if(e.key === "Escape"){
+            let overlayCloseButton = document.getElementById("overlay-close")
+            overlayCloseButton.dispatchEvent(new Event("click"))
+        }
+    })
 }
 
 function onKgButtonClicked(e){
@@ -15,71 +29,72 @@ function onKgButtonClicked(e){
     loadingRing.classList.add("visible")
 
     let editor = document.getElementById("text-editor")
-    let editorContent = editor.textContent.trim()
+    let editorContent = editor.innerText
+    editorContent = editorContent.trim()
     editorContent = editorContent.replaceAll(/[\s\n]+/g, " ")
 
     let postData = {"content": editorContent}
 
-    // requestBackend("/api/v1/kg", null, null, postData, onKgReceive)
-    onKgReceive("{\n" +
-        "  \"text\": \"The Bauhaus-Universität Weimar is a university located in Weimar, Germany.\",\n" +
-        "  \"triples\": [\n" +
-        "    {\n" +
-        "      \"subject\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/entity/Q573975\",\n" +
-        "        \"start_idx\": 4,\n" +
-        "        \"end_idx\": 30,\n" +
-        "        \"text\": \"Bauhaus-Universität Weimar\"\n" +
-        "      },\n" +
-        "      \"predicate\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/prop/direct/P131\",\n" +
-        "        \"text\": \"located in the administrative territorial entity\"\n" +
-        "      },\n" +
-        "      \"object\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/entity/Q3955\",\n" +
-        "        \"start_idx\": 58,\n" +
-        "        \"end_idx\": 64,\n" +
-        "        \"text\": \"Weimar\"\n" +
-        "      }\n" +
-        "    },\n" +
-        "    {\n" +
-        "      \"subject\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/entity/Q573975\",\n" +
-        "        \"start_idx\": 4,\n" +
-        "        \"end_idx\": 30,\n" +
-        "        \"text\": \"Bauhaus-Universität Weimar\"\n" +
-        "      },\n" +
-        "      \"predicate\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/prop/direct/P17\",\n" +
-        "        \"text\": \"country\"\n" +
-        "      },\n" +
-        "      \"object\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/entity/Q183\",\n" +
-        "        \"start_idx\": 66,\n" +
-        "        \"end_idx\": 73,\n" +
-        "        \"text\": \"Germany\"\n" +
-        "      }\n" +
-        "    },\n" +
-        "    {\n" +
-        "      \"subject\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/entity/Q3955\",\n" +
-        "        \"start_idx\": 58,\n" +
-        "        \"end_idx\": 64,\n" +
-        "        \"text\": \"Weimar\"\n" +
-        "      },\n" +
-        "      \"predicate\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/prop/direct/P17\",\n" +
-        "        \"text\": \"country\"\n" +
-        "      },\n" +
-        "      \"object\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/entity/Q183\",\n" +
-        "        \"start_idx\": 66,\n" +
-        "        \"end_idx\": 73,\n" +
-        "        \"text\": \"Germany\"\n" +
-        "      }\n" +
-        "    }\n" +
-        "  ]\n" +
-        "}")
+    requestBackend("POST","/api/v1/kg", null, null, postData, onKgReceive)
+    // onKgReceive("{\n" +
+    //     "  \"text\": \"The Bauhaus-Universität Weimar is a university located in Weimar, Germany.\",\n" +
+    //     "  \"triples\": [\n" +
+    //     "    {\n" +
+    //     "      \"subject\": {\n" +
+    //     "        \"url\": \"http://www.wikidata.org/entity/Q573975\",\n" +
+    //     "        \"start_idx\": 4,\n" +
+    //     "        \"end_idx\": 30,\n" +
+    //     "        \"text\": \"Bauhaus-Universität Weimar\"\n" +
+    //     "      },\n" +
+    //     "      \"predicate\": {\n" +
+    //     "        \"url\": \"http://www.wikidata.org/prop/direct/P131\",\n" +
+    //     "        \"text\": \"located in the administrative territorial entity\"\n" +
+    //     "      },\n" +
+    //     "      \"object\": {\n" +
+    //     "        \"url\": \"http://www.wikidata.org/entity/Q3955\",\n" +
+    //     "        \"start_idx\": 58,\n" +
+    //     "        \"end_idx\": 64,\n" +
+    //     "        \"text\": \"Weimar\"\n" +
+    //     "      }\n" +
+    //     "    },\n" +
+    //     "    {\n" +
+    //     "      \"subject\": {\n" +
+    //     "        \"url\": \"http://www.wikidata.org/entity/Q573975\",\n" +
+    //     "        \"start_idx\": 4,\n" +
+    //     "        \"end_idx\": 30,\n" +
+    //     "        \"text\": \"Bauhaus-Universität Weimar\"\n" +
+    //     "      },\n" +
+    //     "      \"predicate\": {\n" +
+    //     "        \"url\": \"http://www.wikidata.org/prop/direct/P17\",\n" +
+    //     "        \"text\": \"country\"\n" +
+    //     "      },\n" +
+    //     "      \"object\": {\n" +
+    //     "        \"url\": \"http://www.wikidata.org/entity/Q183\",\n" +
+    //     "        \"start_idx\": 66,\n" +
+    //     "        \"end_idx\": 73,\n" +
+    //     "        \"text\": \"Germany\"\n" +
+    //     "      }\n" +
+    //     "    },\n" +
+    //     "    {\n" +
+    //     "      \"subject\": {\n" +
+    //     "        \"url\": \"http://www.wikidata.org/entity/Q3955\",\n" +
+    //     "        \"start_idx\": 58,\n" +
+    //     "        \"end_idx\": 64,\n" +
+    //     "        \"text\": \"Weimar\"\n" +
+    //     "      },\n" +
+    //     "      \"predicate\": {\n" +
+    //     "        \"url\": \"http://www.wikidata.org/prop/direct/P17\",\n" +
+    //     "        \"text\": \"country\"\n" +
+    //     "      },\n" +
+    //     "      \"object\": {\n" +
+    //     "        \"url\": \"http://www.wikidata.org/entity/Q183\",\n" +
+    //     "        \"start_idx\": 66,\n" +
+    //     "        \"end_idx\": 73,\n" +
+    //     "        \"text\": \"Germany\"\n" +
+    //     "      }\n" +
+    //     "    }\n" +
+    //     "  ]\n" +
+    //     "}")
 }
 
 function onKgReceive(responseText){
@@ -143,8 +158,12 @@ function createDOMElementFromEntity(entity){
     entityDescription.classList.add("entity-description")
     entitySpan.appendChild(entityDescription)
 
-    entitySpan.addEventListener("click", function (e){
+    entitySpan.addEventListener("dblclick", function (e){
         window.open(e.target.getAttribute("href"), "_blank").focus()
+    })
+
+    entitySpan.addEventListener("click", function (e){
+        drawEntityChangePanel(e.target)
     })
 
     return entitySpan
@@ -181,6 +200,83 @@ function createNodeFromEntity(entity){
             bold: true
         }
     }
+}
+
+function drawEntityChangePanel(entitySpan){
+    let overlay = document.getElementById("overlay")
+    overlay.style.display = "flex"
+
+    let overlayContent = document.getElementById("overlay-content")
+    overlayContent.href = entitySpan.getAttribute("href")
+
+    let entityName = [].reduce.call(entitySpan.childNodes, function(a, b) { return a + (b.nodeType === 3 ? b.textContent : ''); }, '');
+
+    let overlayEntityHeading = document.getElementById("overlay-entity-heading")
+    overlayEntityHeading.innerText = entityName
+
+    let entityResultContainer = document.getElementById("overlay-entity-result-container")
+    entityResultContainer.innerHTML = ""
+
+    requestBackend(
+        "GET", "https://metareal-kb.web.webis.de/api/v1/kb/entity/search",
+        {"q": entityName}, null, null,
+        function (responseText) {
+            let data = JSON.parse(responseText)["data"]
+
+            for (let i in data){
+                let entityId = document.getElementById("overlay-content").href
+                let entityContainer = document.createElement("div")
+                entityContainer.className = "overlay-entity-container"
+                entityResultContainer.appendChild(entityContainer)
+
+                let entitySelection = document.createElement("input")
+                entitySelection.className = "overlay-entity-selection"
+                entitySelection.type = "radio"
+                entitySelection.name = "entity"
+                entitySelection.value = data[i]["id"]
+
+                if(entityId === data[i]["id"]){
+                    entitySelection.checked = true;
+                }
+                entitySelection.addEventListener("change", function(e){
+                    let radio = e.target
+                    let entityId = document.getElementById("overlay-content").href
+                    let entitySpans = document.querySelectorAll(".entity[href=\""+ entityId + "\"]")
+                    for (let entitySpan of entitySpans){
+                        console.log(entitySpan)
+                        entitySpan.setAttribute("href", radio.value)
+                        entitySpan.getElementsByClassName("entity-description")[0].innerText = radio.value
+                    }
+                })
+                entityContainer.appendChild(entitySelection)
+
+                let entity = document.createElement("div")
+                entity.className = "overlay-entity"
+                entityContainer.appendChild(entity)
+
+                let entityLabel = document.createElement("h2")
+                entityLabel.className = "overlay-entity-label"
+                entityLabel.innerText = data[i]["label"]
+                entity.appendChild(entityLabel)
+
+                let entityLink = document.createElement("a")
+                entityLink.className = "overlay-entity-link"
+                entityLink.href = data[i]["id"]
+                entityLink.innerText = data[i]["id"]
+                entityLink.target = "_blank"
+                entity.appendChild(entityLink)
+
+                let entityDescription = document.createElement("div")
+                entityDescription.className = "overlay-entity-description"
+                entityDescription.innerText = data[i]["description"]
+                entity.appendChild(entityDescription)
+
+                let entityFreq = document.createElement("div")
+                entityFreq.className = "overlay-entity-freq"
+                entityFreq.innerText = "Frequency: " + data[i]["frequency"]
+                entity.appendChild(entityFreq)
+            }
+        })
 }
 
 function drawKG(kg){
@@ -263,16 +359,20 @@ function drawKG(kg){
     })
 }
 
-function requestBackend(path, params, header, data, callback){
+function requestBackend(method, url, params, header, data, callback){
     let request = new XMLHttpRequest()
     request.addEventListener("readystatechange", function () {
         genericCallback(this, callback)
     })
 
-    request.open("POST", path + formatParams(params), true)
+    request.open(method, url + formatParams(params), true)
     request.setRequestHeader("Content-Type", "application/json")
     request.setRequestHeader("Accept", "application/json")
-    request.send(JSON.stringify(data))
+    if(method === "POST"){
+        request.send(JSON.stringify(data))
+    } else{
+        request.send()
+    }
 }
 
 function genericCallback(req, callback){

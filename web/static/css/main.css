@@ -191,6 +191,61 @@ body{
     filter: grayscale(100%);
 }
 
+#overlay {
+    display: none;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 2;
+    justify-content: center;
+    align-items: center;
+}
+
+#overlay-content .close {
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+#overlay-content {
+    position: absolute;
+    width: 60%;
+    height: 50%;
+    z-index: 3;
+    border-radius: 6px;
+    background-color: white;
+    padding: 20px;
+}
+
+#overlay-entity-result-container {
+    margin-top: 2em;
+    border: black 1px solid;
+    overflow: scroll;
+    height: 80%;
+}
+
+.overlay-entity-label{
+    display: inline;
+}
+
+.overlay-entity-container {
+    display: flex;
+    border: gray 1px solid;
+    align-content: center;
+}
+
+.overlay-entity {
+    margin-left: 1em;
+}
+
+.overlay-entity-link{
+    padding-left: 2em;
+    display: inline-block;
+}
+
 .lds-ring {
     display: inline;
     position: relative;
