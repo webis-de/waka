@@ -1,13 +1,10 @@
-import logging
-from abc import ABCMeta
 import re
 from abc import ABCMeta
 from enum import Enum
 from typing import List, Optional
 
-from transformers import pipeline
 from openie import StanfordOpenIE
-# from allennlp.predictors.predictor import Predictor
+from transformers import pipeline
 
 from waka.nlp.kg import Triple, Resource, Property, Entity
 from waka.nlp.text_processor import TextProcessor
@@ -28,11 +25,13 @@ class TokenType(Enum):
 class RebelExtractor(RelationExtractor):
 
     def __init__(self):
+        super().__init__()
         self.extractor = pipeline("text2text-generation",
                                   model="Babelscape/rebel-large",
                                   tokenizer='Babelscape/rebel-large')
 
     def process(self, text: str) -> List[Triple]:
+        super().process(text)
         extraction = self.extractor(text, return_tensors=True, return_text=True)
         token_ids = extraction[0]["generated_token_ids"]
         decoded_text = self.extractor.tokenizer.batch_decode([token_ids])[0]
@@ -106,11 +105,14 @@ class RebelExtractor(RelationExtractor):
 
 class MRebelExtractor(RelationExtractor):
     def __init__(self):
-        logging.info("Loading MREbel...")
-        self.extractor = pipeline('translation_xx_to_yy', model='Babelscape/mrebel-large',
-                                  tokenizer='Babelscape/mrebel-large')
+        super().__init__()
+        self.extractor = pipeline('translation_xx_to_yy',
+                                  model='Babelscape/mrebel-large',
+                                  tokenizer='Babelscape/mrebel-large',
+                                  device="cuda")
 
     def process(self, text: str) -> Optional[List[Entity | Triple]]:
+        super().process(text)
         extracted_text = self.extractor.tokenizer \
             .batch_decode([self.extractor(text,
                                           decoder_start_token_id=250058,
@@ -136,9 +138,9 @@ class MRebelExtractor(RelationExtractor):
                 current = 't'
                 if relation != '':
                     triplets.append(Triple(
-                        MRebelExtractor.get_resource(subject.strip(), original_text, substr_indices),
+                        MRebelExtractor.get_resource(subject.strip()),
                         Property(url=None, text=relation.strip()),
-                        MRebelExtractor.get_resource(object_.strip(), original_text, substr_indices)))
+                        MRebelExtractor.get_resource(object_.strip())))
                     relation = ''
                 subject = ''
             elif token.startswith("<") and token.endswith(">"):
@@ -146,9 +148,9 @@ class MRebelExtractor(RelationExtractor):
                     current = 's'
                     if relation != '':
                         triplets.append(Triple(
-                            MRebelExtractor.get_resource(subject.strip(), original_text, substr_indices),
+                            MRebelExtractor.get_resource(subject.strip()),
                             Property(url=None, text=relation.strip()),
-                            MRebelExtractor.get_resource(object_.strip(), original_text, substr_indices)))
+                            MRebelExtractor.get_resource(object_.strip())))
                     object_ = ''
                     subject_type = token[1:-1]
                 else:
@@ -165,43 +167,42 @@ class MRebelExtractor(RelationExtractor):
         if subject != '' and relation != '' and object_ != '' and object_type != '' and subject_type != '':
             triplets.append(
                 Triple(
-                    MRebelExtractor.get_resource(subject.strip(), original_text, substr_indices),
+                    MRebelExtractor.get_resource(subject.strip()),
                     Property(url=None, text=relation.strip()),
-                    MRebelExtractor.get_resource(object_.strip(), original_text, substr_indices)))
+                    MRebelExtractor.get_resource(object_.strip())))
         return triplets
 
     @staticmethod
-    def get_resource(token: str, original_text: str, substr_indices: dict):
-        if token not in substr_indices:
-            substr_indices[token] = [m.start() for m in re.finditer(f"\\b{token}\\b", original_text)]
-        start_idx = substr_indices[token][0]
-        substr_indices[token].pop(0)
-
-        if len(substr_indices[token]) == 0:
-            del substr_indices[token]
-
-        return Resource(url=None, text=token, start_idx=start_idx, end_idx=start_idx + len(token))
+    def get_resource(token: str):
+        return Resource(url=None, text=token, start_idx=None, end_idx=None)
 
 
-# class OpenIEExtractor(RelationExtractor):
-#     def __init__(self):
-#         properties = {
-#             'openie.affinity_probability_cap': 1 / 3,
-#             "openie.triple.strict": True
-#         }
-#
-#         self.client = StanfordOpenIE(properties=properties)
-#         self.client.annotate("dummy")
-#         model_url = "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2020.02.27.tar.gz"
-#         self.predictor = Predictor.from_path(model_url)
-#
-#     def process(self, text: str) -> Optional[List[Triple]]:
-#         prediction = self.predictor.predict(document=text)
-#
-#         document, clusters = prediction['document'], prediction['clusters']
-#         resolved_text = self.predictor.coref_resolved(text)
-#
-#         triples = self.client.annotate(resolved_text)
-#
-#         for triple in triples:
-#             print(triple)
+class OpenIEExtractor(RelationExtractor):
+    def __init__(self):
+        super().__init__()
+        properties = {
+            'openie.affinity_probability_cap': 1 / 3,
+            "openie.triple.strict": True
+        }
+
+        self.client = StanfordOpenIE(properties=properties)
+        self.client.annotate("dummy")
+
+        model_url = "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2020.02.27.tar.gz"
+        self.predictor = Predictor.from_path(model_url)
+
+    def process(self, text: str) -> Optional[List[Triple]]:
+        # prediction = self.predictor.predict(document=text)
+
+        # document, clusters = prediction['document'], prediction['clusters']
+        # resolved_text = self.predictor.coref_resolved(text)
+
+        triples = self.client.annotate(text)
+
+        for triple in triples:
+            print(triple)
+
+
+if __name__ == '__main__':
+    re = OpenIEExtractor()
+    re.process("The Bauhaus-Universität Weimar is a university located in Weimar, Germany, and specializes in the artistic and technical fields. Established in 1860 as the Great Ducal Saxon Art School, it gained collegiate status on 3 June 1910. In 1919 the school was renamed Bauhaus by its new director Walter Gropius and it received its present name in 1996. There are more than 4000 students enrolled, with the percentage of international students above the national average at around 27%. In 2010 the Bauhaus-Universität Weimar commemorated its 150th anniversary as an art school and college in Weimar. In 2019 the university celebrated the centenary of the founding of the Bauhaus, together with partners all over the world. ")

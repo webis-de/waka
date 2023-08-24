@@ -1,10 +1,9 @@
 import abc
-from typing import Optional, List
+from typing import List
 
 import requests
 
-from waka.nlp.kg import Entity, Triple, Property
-from waka.nlp.relation_extraction import RebelExtractor, MRebelExtractor
+from waka.nlp.kg import Triple
 from waka.nlp.text_processor import TextProcessor
 
 
@@ -15,9 +14,11 @@ class RelationLinker(TextProcessor[List[Triple], List[Triple]], metaclass=abc.AB
 class ElasticRelationLinker(RelationLinker):
 
     def __init__(self):
+        super().__init__()
         self.search_endpoint = "https://metareal-kb.web.webis.de/api/v1/kb/property/search"
 
     def process(self, triples: List[Triple]) -> List[Triple]:
+        super().process(triples)
         cache = {}
         headers = {"accept": "application/json"}
 

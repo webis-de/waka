@@ -1,4 +1,5 @@
 import abc
+from threading import Thread
 from typing import List
 
 import requests
@@ -13,39 +14,58 @@ class EntityLinker(TextProcessor[List[Entity], List[Entity]], metaclass=abc.ABCM
 
 class ElasticEntityLinker(EntityLinker):
     def __init__(self):
+        super().__init__()
         self.search_endpoint = "https://metareal-kb.web.webis.de/api/v1/kb/entity/search"
 
     def process(self, in_data: List[Entity]) -> List[Entity]:
-        cache = {}
+        super().process(in_data)
+        # cache = {}
         linked_entities = []
-
-        headers = {"accept": "application/json"}
+        request_threads = []
 
         for entity in in_data:
-            retrieved_entities = []
 
-            if entity.text in cache:
-                retrieved_entities.extend(cache[entity.text])
-            else:
-                request_params = {"q": entity.text}
+            # if entity.text in cache:
+            #     retrieved_entities.extend(cache[entity.text])
+            # else:
 
-                response = requests.get(self.search_endpoint, params=request_params, headers=headers)
-                body = response.json()
+            request = self.RequestThread(self.search_endpoint, entity)
+            request.start()
+            request_threads.append(request)
 
-                if body["status"] == "success":
-                    for e in body["data"]:
-                        retrieved_entities.append(e)
+        for thread in request_threads:
+            thread.join()
 
-                    cache[entity.text] = retrieved_entities
-
-                for e in retrieved_entities:
-                    linked_entities.append(Entity(
-                        url=e["id"],
-                        start_idx=entity.start_idx,
-                        end_idx=entity.end_idx,
-                        text=entity.text,
-                        label=e["label"],
-                        score=e["score"],
-                        e_type=entity.type))
+            linked_entities.extend(thread.linked_entities)
 
         return linked_entities
+
+    class RequestThread(Thread):
+        def __init__(self, endpoint, entity):
+            super().__init__()
+
+            self.linked_entities = []
+            self.endpoint = endpoint
+            self.entity = entity
+
+        def run(self) -> None:
+            retrieved_entities = []
+            request_params = {"q": self.entity.text}
+
+            response = requests.get(self.endpoint, params=request_params, headers={"accept": "application/json"})
+            body = response.json()
+
+            if body["status"] == "success":
+                for e in body["data"]:
+                    retrieved_entities.append(e)
+
+            for e in retrieved_entities:
+                self.linked_entities.append(Entity(
+                    url=e["id"],
+                    start_idx=self.entity.start_idx,
+                    end_idx=self.entity.end_idx,
+                    text=self.entity.text,
+                    label=e["label"],
+                    score=e["score"],
+                    e_type=self.entity.type))
+

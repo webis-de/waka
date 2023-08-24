@@ -1,51 +1,70 @@
-import uvicorn
+import multiprocessing
 
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
+import uvicorn
+from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from waka.nlp.kg import KnowledgeGraph
 from waka.nlp.kg_constructor import KnowledgeGraphConstructor
-
-app = FastAPI(
-    title="WAKA",
-    description="Backend of the WAKA Assisted Knowledge Graph Authoring System",
-    version="0.1.0",
-    openapi_url="/api/v1/openapi.json"
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.mount(
-    "/static",
-    StaticFiles(directory="web/static"),
-    name="static"
-)
-
-kg_construct = KnowledgeGraphConstructor()
 
 
 class Text(BaseModel):
     content: str
 
 
-@app.post("/api/v1/kg", response_model=KnowledgeGraph)
-async def get_kg(text: Text) -> KnowledgeGraph:
-    return kg_construct.construct(text.content)
+def app():
+    app = FastAPI(
+        title="WAKA",
+        description="Backend of the WAKA Assisted Knowledge Graph Authoring System",
+        version="0.1.0",
+        openapi_url="/api/v1/openapi.json")
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    app.mount(
+        "/static",
+        StaticFiles(directory="web/static"),
+        name="static"
+    )
+
+    app.include_router(KGConstructionRouter())
+
+    return app
+
+
+class KGConstructionRouter(APIRouter):
+    def __init__(self):
+        super().__init__()
+        self.kg_construct = KnowledgeGraphConstructor()
+
+        self.add_api_route(path="/api/v1/kg",
+                           endpoint=self.create_kg,
+                           response_model=KnowledgeGraph,
+                           methods=["POST"])
+
+    async def create_kg(self, text: Text) -> KnowledgeGraph:
+        return self.kg_construct.construct(text.content)
 
 
 def main():
+    multiprocessing.set_start_method("spawn")
+
     host = "0.0.0.0"
     port = 8000
+
+    log_config = uvicorn.config.LOGGING_CONFIG
+    log_config["formatters"]["access"]["fmt"] = "%(asctime)s - %(levelname)s - %(message)s"
+    log_config["formatters"]["default"]["fmt"] = "%(asctime)s - %(levelname)s - %(message)s"
     uvicorn.run(app='serve:app', host=host,
-                port=port, reload=True)
+                port=port, reload=False, lifespan="on", log_config=log_config)
 
 
 if __name__ == "__main__":
