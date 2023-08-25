@@ -24,7 +24,6 @@ class ElasticEntityLinker(EntityLinker):
         request_threads = []
 
         for entity in in_data:
-
             # if entity.text in cache:
             #     retrieved_entities.extend(cache[entity.text])
             # else:
@@ -69,3 +68,6 @@ class ElasticEntityLinker(EntityLinker):
                     score=e["score"],
                     e_type=self.entity.type))
 
+            if len(self.linked_entities) == 0:
+                self.entity.score = 0
+                self.linked_entities.append(self.entity)

@@ -48,7 +48,8 @@ class Entity(Resource):
     type: Optional[str] = None
     score: Optional[float] = None
 
-    def __init__(self, url: Optional[str] = None,
+    def __init__(self,
+                 url: Optional[str] = None,
                  start_idx: Optional[int] = None, end_idx: Optional[int] = None,
                  text: Optional[str] = None, label: Optional[str] = None, score: Optional[float] = None,
                  e_type: Optional[str] = None):
@@ -56,6 +57,18 @@ class Entity(Resource):
         self.label = label
         self.type = e_type
         self.score = score
+
+    def __repr__(self):
+        return f"{self.start_idx}:{self.end_idx}:{self.text}"
+
+    def __hash__(self):
+        return hash(self.__repr__())
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     @staticmethod
     def from_resource(resource: Resource) -> Entity:
@@ -97,8 +110,14 @@ class Triple:
 class KnowledgeGraph:
     text: Optional[str]
     triples: Optional[List[Triple]]
+    entities: List[Entity]
+    entity_candidates: List[Entity]
 
-    def __init__(self, text: str, triples: Optional[List[Triple]] = None, **kwargs: Any):
+    def __init__(self, text: str,
+                 triples: Optional[List[Triple]] = None,
+                 entities: Optional[List[Entity]] = None,
+                 entity_candidates: Optional[List[Entity]] = None,
+                 **kwargs: Any):
         super().__init__(**kwargs)
         self.text = text
 
@@ -106,6 +125,16 @@ class KnowledgeGraph:
             self.triples = triples
         else:
             self.triples = []
+
+        if entities is not None:
+            self.entities = entities
+        else:
+            self.entities = []
+
+        if entity_candidates is not None:
+            self.entity_candidates = entity_candidates
+        else:
+            self.entity_candidates = []
 
         self.logger = logging.getLogger(KnowledgeGraph.__name__)
 
@@ -161,13 +190,30 @@ class KnowledgeGraph:
             for mention, entity in entities_by_mention.items():
                 entities_by_mention[mention] = sorted(entities_by_mention[mention], key=lambda e: -e.score, )
 
-            kg = KnowledgeGraph(text=self.text, triples=[])
+            kg = KnowledgeGraph(text=self.text, triples=[], entities=[], entity_candidates=[])
+
             for triple in self.triples:
                 if triple.subject.text in entities_by_mention:
-                    triple.subject = entities_by_mention[triple.subject.text][0]
+                    entity = entities_by_mention[triple.subject.text][0]
+                    kg.entities.append(entity)
+                    triple.subject = entity
+                else:
+                    for mention in entities_by_mention:
+                        if triple.subject.text in mention:
+                            entity = entities_by_mention[mention][0]
+                            kg.entities.append(entity)
+                            triple.subject = entity
 
                 if triple.object.text in entities_by_mention:
-                    triple.object = entities_by_mention[triple.object.text][0]
+                    entity = entities_by_mention[triple.object.text][0]
+                    kg.entities.append(entity)
+                    triple.object = entity
+                else:
+                    for mention in entities_by_mention:
+                        if triple.object.text in mention:
+                            entity = entities_by_mention[mention][0]
+                            kg.entities.append(entity)
+                            triple.object = entity
 
             kg.triples.extend(self.triples)
 

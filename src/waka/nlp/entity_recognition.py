@@ -82,16 +82,21 @@ class SparkNLPNER(EntityRecognizer):
         super().__init__()
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
         logging.getLogger("py4j").setLevel(level=logging.WARN)
-        self.spark = sparknlp.start(gpu=True, output_level=0)
-        self.spark.sparkContext.setLogLevel("WARN")
-        self.nlp = PretrainedPipeline("onto_recognize_entities_lg", "en")
+        self.spark = sparknlp.start(gpu=True)
+        # self.spark.sparkContext.setLogLevel("WARN")
+        self.nlp_onto = PretrainedPipeline("onto_recognize_entities_lg", "en")
+        self.nlp_dl = PretrainedPipeline("recognize_entities_dl", "en")
 
     def get_entity_type(self, entity):
         pass
 
     def process(self, text: str) -> List[Entity]:
         super().process(text)
-        results = self.nlp.fullAnnotate(text)
+        pipelines = [self.nlp_onto, self.nlp_dl]
+
+        results = []
+        for pipeline in pipelines:
+            results.extend(pipeline.fullAnnotate(text))
 
         entities = []
 
@@ -108,6 +113,24 @@ class SparkNLPNER(EntityRecognizer):
                 entities.append(entity)
 
         return entities
+
+
+class EnsembleNER(EntityRecognizer):
+
+    def __init__(self):
+        super().__init__()
+        self.ner = [SparkNLPNER(), StanzaNER(), SpacyNER()]
+
+    def get_entity_type(self, entity):
+        pass
+
+    def process(self, text: str) -> List[Entity]:
+        entities = set()
+
+        for ner in self.ner:
+            entities = entities.union(ner.process(text))
+
+        return list(entities)
 
 
 if __name__ == '__main__':

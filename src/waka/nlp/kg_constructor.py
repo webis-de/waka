@@ -2,7 +2,7 @@ import logging
 from typing import List
 
 from waka.nlp.entity_linking import ElasticEntityLinker
-from waka.nlp.entity_recognition import SparkNLPNER
+from waka.nlp.entity_recognition import EnsembleNER
 from waka.nlp.kg import Entity, Triple, KnowledgeGraph
 from waka.nlp.relation_extraction import MRebelExtractor
 from waka.nlp.relation_linking import ElasticRelationLinker
@@ -14,7 +14,7 @@ class KnowledgeGraphConstructor:
     def __init__(self):
         self.logger = logging.getLogger(KnowledgeGraphConstructor.__name__)
         self.logger.setLevel(logging.DEBUG)
-        self.er = SparkNLPNER
+        self.er = EnsembleNER
         self.el = ElasticEntityLinker
         self.re = MRebelExtractor
         self.rl = ElasticRelationLinker
@@ -35,6 +35,7 @@ class KnowledgeGraphConstructor:
             self.logger.error(e.with_traceback(None))
 
     def construct(self, text: str) -> KnowledgeGraph:
+        self.logger.setLevel(logging.DEBUG)
         self.el_pipeline.process(text)
         self.rl_pipeline.process(text)
 
