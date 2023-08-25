@@ -108,20 +108,7 @@ function onKgReceive(responseText){
     let kg = JSON.parse(responseText)
     console.log(kg)
 
-    let entityTable = new Map()
-    for(let triple of kg.triples){
-        entityTable.set(
-            triple.subject.url +":" + triple.subject.start_idx + ":" + triple.subject.end_idx,
-            triple.subject
-        )
-
-        entityTable.set(
-            triple.object.url +":" + triple.object.start_idx + ":" + triple.object.end_idx,
-            triple.object
-        )
-    }
-
-    let entities =  Array.from(entityTable.values())
+    let entities =  Array.from(kg.entities)
     entities.sort(function (a, b){return a.start_idx - b.start_idx})
     let textEditor = document.getElementById("text-editor")
 

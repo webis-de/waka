@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import abc
-import logging
 from typing import Optional, List, Any
 
 from databind.json import dumps
@@ -109,34 +108,9 @@ class Triple:
 @dataclass
 class KnowledgeGraph:
     text: Optional[str]
-    triples: Optional[List[Triple]]
+    triples: List[Triple]
     entities: List[Entity]
     entity_candidates: List[Entity]
-
-    def __init__(self, text: str,
-                 triples: Optional[List[Triple]] = None,
-                 entities: Optional[List[Entity]] = None,
-                 entity_candidates: Optional[List[Entity]] = None,
-                 **kwargs: Any):
-        super().__init__(**kwargs)
-        self.text = text
-
-        if triples is not None:
-            self.triples = triples
-        else:
-            self.triples = []
-
-        if entities is not None:
-            self.entities = entities
-        else:
-            self.entities = []
-
-        if entity_candidates is not None:
-            self.entity_candidates = entity_candidates
-        else:
-            self.entity_candidates = []
-
-        self.logger = logging.getLogger(KnowledgeGraph.__name__)
 
     def __str__(self) -> str:
         return self.to_rdf()
@@ -170,6 +144,8 @@ class KnowledgeGraph:
             else:
                 self.entities = []
 
+            self.kg = None
+
         def add_triple(self, triple: Triple) -> KnowledgeGraph.Builder:
             self.triples.append(triple)
             return self
@@ -180,6 +156,7 @@ class KnowledgeGraph:
 
         def build(self) -> KnowledgeGraph:
             entities_by_mention = {}
+            self.kg = KnowledgeGraph(text=self.text, triples=[], entities=[], entity_candidates=[])
 
             for entity in self.entities:
                 if entity.text not in entities_by_mention:
@@ -188,33 +165,53 @@ class KnowledgeGraph:
                 entities_by_mention[entity.text].append(entity)
 
             for mention, entity in entities_by_mention.items():
-                entities_by_mention[mention] = sorted(entities_by_mention[mention], key=lambda e: -e.score, )
-
-            kg = KnowledgeGraph(text=self.text, triples=[], entities=[], entity_candidates=[])
+                entities_by_mention[mention] = sorted(entities_by_mention[mention], key=lambda e: -e.score)
+                self.kg.entity_candidates.append(entities_by_mention[mention][0])
 
             for triple in self.triples:
-                if triple.subject.text in entities_by_mention:
-                    entity = entities_by_mention[triple.subject.text][0]
-                    kg.entities.append(entity)
+                entity = self._get_entity_for_mention(triple.subject.text, entities_by_mention)
+
+                if entity is not None:
                     triple.subject = entity
-                else:
-                    for mention in entities_by_mention:
-                        if triple.subject.text in mention:
-                            entity = entities_by_mention[mention][0]
-                            kg.entities.append(entity)
-                            triple.subject = entity
 
-                if triple.object.text in entities_by_mention:
-                    entity = entities_by_mention[triple.object.text][0]
-                    kg.entities.append(entity)
+                entity = self._get_entity_for_mention(triple.object.text, entities_by_mention)
+
+                if entity is not None:
                     triple.object = entity
-                else:
-                    for mention in entities_by_mention:
-                        if triple.object.text in mention:
-                            entity = entities_by_mention[mention][0]
-                            kg.entities.append(entity)
-                            triple.object = entity
 
-            kg.triples.extend(self.triples)
+            self.kg.triples.extend(self.triples)
+            self.kg.entities = list(set(self.kg.entities))
 
-            return kg
+            return self.kg
+
+        def _get_entity_for_mention(self, mention: str, entities_by_mention: dict) -> Entity:
+            if mention in entities_by_mention:
+                entity = entities_by_mention[mention][0]
+
+                for i in range(1, len(entities_by_mention[mention])):
+                    if entities_by_mention[mention][i].url != entity.url:
+                        break
+
+                    self.kg.entities.append(entities_by_mention[mention][i])
+
+                self.kg.entities.append(entity)
+                if entity in self.kg.entity_candidates:
+                    self.kg.entity_candidates.remove(entity)
+
+                return entity
+            else:
+                for mention_key in entities_by_mention:
+                    if mention in mention_key:
+                        entity = entities_by_mention[mention][0]
+                        for i in range(1, len(entities_by_mention[mention])):
+                            if entities_by_mention[mention][i].url != entity.url:
+                                break
+
+                            self.kg.entities.append(entities_by_mention[mention][i])
+
+                        self.kg.entities.append(entity)
+                        if entity in self.kg.entity_candidates:
+                            self.kg.entity_candidates.remove(entity)
+                        return entity
+
+            return None
