@@ -107,6 +107,7 @@ body{
     /*overflow-x: scroll;*/
     position: relative;
     z-index: 0;
+    line-height: 4ex;
 }
 
 #text-editor-button-container {
@@ -149,6 +150,7 @@ body{
 
 .entity:hover {
     background-color: var(--highlight-color);
+    transition-delay: 0s;
 }
 
 .highlight {
@@ -170,6 +172,9 @@ body{
     display: block;
     width: 400px;
     font-family: "Helvetica", serif;
+    line-height: normal;
+    transition-delay: 0s;
+    transition-duration: 200ms;
 }
 
 .entity .entity-description::after {
@@ -185,6 +190,30 @@ body{
 
 .entity:hover .entity-description{
     visibility: visible;
+}
+
+.entity-description header{
+    font-size: 16pt;
+    position: relative;
+    z-index: 2;
+}
+
+.entity-description hr{
+    color: white;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+    width: 50%;
+}
+
+.entity-description div{
+    font-style: italic;
+    margin-bottom: 1em;
+    position: relative;
+    z-index: 2;
+}
+
+.entity-description a{
+    position: relative;
+    z-index: 3;
 }
 
 .vis-button {

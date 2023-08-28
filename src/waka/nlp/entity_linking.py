@@ -66,7 +66,8 @@ class ElasticEntityLinker(EntityLinker):
                     text=self.entity.text,
                     label=e["label"],
                     score=e["score"],
-                    e_type=self.entity.type))
+                    e_type=self.entity.e_type,
+                    description=e["description"]))
 
             if len(self.linked_entities) == 0:
                 self.entity.score = 0

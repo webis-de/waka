@@ -37,7 +37,16 @@ class SpacyNER(EntityRecognizer):
         doc = self.nlp(text)
 
         for ent in doc.ents:
-            entities.append(Entity(None, ent.start_char, ent.end_char, ent.text, e_type=ent.label_))
+            entities.append(Entity(
+                url=None,
+                start_idx=ent.start_char,
+                end_idx=ent.end_char,
+                text=ent.text,
+                e_type=ent.label_,
+                label=None,
+                description=None,
+                score=None
+            ))
 
         return entities
 
@@ -70,7 +79,8 @@ class StanzaNER(EntityRecognizer):
                 text=entity.text,
                 label=None,
                 score=None,
-                e_type=entity.type
+                e_type=entity.type,
+                description=None
             ))
 
         return entities
@@ -108,7 +118,8 @@ class SparkNLPNER(EntityRecognizer):
                                 text=annotation.result,
                                 label=None,
                                 score=None,
-                                e_type=annotation.metadata.entity)
+                                e_type=annotation.metadata.getOrDefault("entity", None),
+                                description=None)
 
                 entities.append(entity)
 

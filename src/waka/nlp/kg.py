@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 import abc
-from typing import Optional, List, Any
+from typing import Optional, List
 
 from databind.json import dumps
 from pydantic.dataclasses import dataclass
 
 
+@dataclass(kw_only=True)
 class GenericItem(metaclass=abc.ABCMeta):
     text: Optional[str]
-
-    def __init__(self, text: Optional[str] = None):
-        self.text = text
 
     def to_json(self) -> str:
         return dumps(self, self.__class__)
@@ -20,42 +18,21 @@ class GenericItem(metaclass=abc.ABCMeta):
         return self.to_json()
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Resource(GenericItem):
     url: Optional[str]
     start_idx: Optional[int]
     end_idx: Optional[int]
-    text: Optional[str]
-
-    def __init__(self,
-                 url: Optional[str] = None,
-                 start_idx: Optional[int] = None,
-                 end_idx: Optional[int] = None,
-                 text: Optional[str] = None,
-                 ):
-        super().__init__(text)
-        self.url = url
-        self.start_idx = start_idx
-        self.end_idx = end_idx
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Entity(Resource):
-    label: Optional[str] = None
+    label: Optional[str]
     start_idx: Optional[int]
     end_idx: Optional[int]
-    type: Optional[str] = None
-    score: Optional[float] = None
-
-    def __init__(self,
-                 url: Optional[str] = None,
-                 start_idx: Optional[int] = None, end_idx: Optional[int] = None,
-                 text: Optional[str] = None, label: Optional[str] = None, score: Optional[float] = None,
-                 e_type: Optional[str] = None):
-        super().__init__(url, start_idx, end_idx, text)
-        self.label = label
-        self.type = e_type
-        self.score = score
+    e_type: Optional[str]
+    score: Optional[float]
+    description: Optional[str]
 
     def __repr__(self):
         return f"{self.start_idx}:{self.end_idx}:{self.text}"
@@ -72,17 +49,13 @@ class Entity(Resource):
     @staticmethod
     def from_resource(resource: Resource) -> Entity:
         return Entity(url=resource.url, start_idx=resource.start_idx, end_idx=resource.end_idx,
-                      text=resource.text)
+                      text=resource.text, label=None, e_type=None, score=None, description=None)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Property(GenericItem):
     url: Optional[str]
     text: Optional[str]
-
-    def __init__(self, url: Optional[str] = None, text: Optional[str] = None):
-        super().__init__(text)
-        self.url = url
 
 
 @dataclass
@@ -90,13 +63,6 @@ class Triple:
     subject: Optional[Resource]
     predicate: Optional[Property]
     object: Optional[Resource]
-
-    def __init__(self, subject: Optional[Resource] = None, predicate: Optional[Property] = None,
-                 object: Optional[Resource] = None, **kwargs: Any):
-        super().__init__(**kwargs)
-        self.subject = subject
-        self.predicate: Optional[Property] = predicate
-        self.object: Optional[Resource] = object
 
     def to_json(self) -> str:
         return dumps(self, Triple)
@@ -127,6 +93,7 @@ class KnowledgeGraph:
     class Builder:
         triples: List[Triple]
         entities: List[Entity]
+        kg: Optional[KnowledgeGraph]
 
         def __init__(self,
                      text: str,
@@ -184,7 +151,7 @@ class KnowledgeGraph:
 
             return self.kg
 
-        def _get_entity_for_mention(self, mention: str, entities_by_mention: dict) -> Entity:
+        def _get_entity_for_mention(self, mention: str, entities_by_mention: dict) -> Optional[Entity]:
             if mention in entities_by_mention:
                 entity = entities_by_mention[mention][0]
 

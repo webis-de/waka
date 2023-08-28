@@ -141,16 +141,37 @@ function createDOMElementFromEntity(entity){
     entitySpan.setAttribute("href", entity.url)
 
     let entityDescription = document.createElement("span")
-    entityDescription.innerText = entity.url
     entityDescription.classList.add("entity-description")
+    entityDescription.setAttribute("contenteditable", false)
+
+    let header = document.createElement("header")
+    header.innerText = entity.label
+    entityDescription.appendChild(header)
+
+    entityDescription.appendChild(document.createElement("hr"))
+
+    let description = document.createElement("div")
+    description.innerText = entity.description
+    entityDescription.appendChild(description)
+
+    let link = document.createElement("a")
+    link.href = entity.url
+    link.target = "_blank"
+    link.innerText = entity.url
+    entityDescription.appendChild(link)
+
     entitySpan.appendChild(entityDescription)
 
-    entitySpan.addEventListener("dblclick", function (e){
-        window.open(e.target.getAttribute("href"), "_blank").focus()
-    })
+    // entitySpan.addEventListener("dblclick", function (e){
+    //     window.open(e.target.getAttribute("href"), "_blank").focus()
+    // })
 
     entitySpan.addEventListener("click", function (e){
         drawEntityChangePanel(e.target)
+    })
+
+    entityDescription.addEventListener("click", function (e){
+        e.stopPropagation()
     })
 
     return entitySpan
