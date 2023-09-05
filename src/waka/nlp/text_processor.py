@@ -44,7 +44,11 @@ class Pipeline(Generic[OUT], Process):
             self.instances.append(processor())
 
         while True:
-            text = self.in_queue.get()
+            try:
+                text = self.in_queue.get()
+            except KeyboardInterrupt:
+                self.end()
+                return
 
             if text == self.eof_token:
                 return

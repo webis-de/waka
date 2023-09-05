@@ -16,3 +16,7 @@ nltk~=3.8.1
 stanza
 spark-nlp~=5.0.2
 pyspark
+cachetools
+aiohttp
+flair
+number-parser

@@ -4,9 +4,9 @@ from enum import Enum
 from typing import List, Optional
 
 from openie import StanfordOpenIE
-from transformers import pipeline
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 
-from waka.nlp.kg import Triple, Resource, Property, Entity
+from waka.nlp.kg import Triple, Property, Entity
 from waka.nlp.text_processor import TextProcessor
 
 
@@ -100,28 +100,64 @@ class RebelExtractor(RelationExtractor):
         if len(substr_indices[token]) == 0:
             del substr_indices[token]
 
-        return Resource(text="", start_idx=start_idx, end_idx=start_idx)
+        return Entity(url=None, text="", start_idx=start_idx, end_idx=start_idx, e_type=None)
 
 
 class MRebelExtractor(RelationExtractor):
     def __init__(self):
         super().__init__()
-        self.extractor = pipeline('translation_xx_to_yy',
-                                  model='Babelscape/mrebel-large',
-                                  tokenizer='Babelscape/mrebel-large',
-                                  device="cuda")
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            "Babelscape/mrebel-large",
+            src_lang="en_XX",
+            tgt_lang="tp_XX")
+
+        self.model = AutoModelForSeq2SeqLM.from_pretrained("Babelscape/mrebel-large")
+        self.model.to("cuda")
+
+        self.gen_kwargs = {
+            "max_length": 512,
+            "length_penalty": 0,
+            "num_beams": 3,
+            "num_return_sequences": 3,
+            "forced_bos_token_id": None,
+        }
+
+        # self.extractor = pipeline('translation_xx_to_yy',
+        #                           model='Babelscape/mrebel-large',
+        #                           tokenizer='Babelscape/mrebel-large',
+        #                           device="cuda")
 
     def process(self, text: str) -> Optional[List[Entity | Triple]]:
         super().process(text)
-        extracted_text = self.extractor.tokenizer \
-            .batch_decode([self.extractor(text,
-                                          decoder_start_token_id=250058,
-                                          src_lang="en_XX",
-                                          tgt_lang="<triplet>",
-                                          return_tensors=True,
-                                          return_text=False)[0]["translation_token_ids"]])
 
-        return self.extract_triplets(extracted_text[0], text)
+        model_inputs = self.tokenizer(text, max_length=512, padding=True, truncation=True, return_tensors='pt')
+        generated_tokens = self.model.generate(
+            model_inputs["input_ids"].to(self.model.device),
+            attention_mask=model_inputs["attention_mask"].to(self.model.device),
+            decoder_start_token_id=self.tokenizer.convert_tokens_to_ids("tp_XX"),
+            **self.gen_kwargs,
+        )
+
+        decoded_preds = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=False)
+
+        # extracted_text = self.extractor.tokenizer \
+        #     .batch_decode([self.extractor(text,
+        #                                   decoder_start_token_id=250058,
+        #                                   src_lang="en_XX",
+        #                                   tgt_lang="<triplet>",
+        #                                   return_tensors=True,
+        #                                   return_text=False)[0]["translation_token_ids"]])
+
+        triples = []
+        triple_hashes = set()
+        for sentence in decoded_preds:
+            for triple in self.extract_triplets(sentence, text):
+                triple_hash = hash(f"{triple.subject.text}:{triple.predicate.text}:{triple.object.text}")
+                if triple_hash not in triple_hashes:
+                    triple_hashes.add(triple_hash)
+                    triples.append(triple)
+
+        return triples
 
     @staticmethod
     def extract_triplets(tagged_text: str, original_text: str) -> List[Triple]:
@@ -138,9 +174,9 @@ class MRebelExtractor(RelationExtractor):
                 current = 't'
                 if relation != '':
                     triplets.append(Triple(
-                        MRebelExtractor.get_resource(subject.strip()),
+                        MRebelExtractor.get_resource(subject.strip(), subject_type),
                         Property(url=None, text=relation.strip()),
-                        MRebelExtractor.get_resource(object_.strip())))
+                        MRebelExtractor.get_resource(object_.strip(), object_type)))
                     relation = ''
                 subject = ''
             elif token.startswith("<") and token.endswith(">"):
@@ -148,9 +184,9 @@ class MRebelExtractor(RelationExtractor):
                     current = 's'
                     if relation != '':
                         triplets.append(Triple(
-                            MRebelExtractor.get_resource(subject.strip()),
+                            MRebelExtractor.get_resource(subject.strip(), subject_type),
                             Property(url=None, text=relation.strip()),
-                            MRebelExtractor.get_resource(object_.strip())))
+                            MRebelExtractor.get_resource(object_.strip(), object_type)))
                     object_ = ''
                     subject_type = token[1:-1]
                 else:
@@ -167,14 +203,14 @@ class MRebelExtractor(RelationExtractor):
         if subject != '' and relation != '' and object_ != '' and object_type != '' and subject_type != '':
             triplets.append(
                 Triple(
-                    MRebelExtractor.get_resource(subject.strip()),
+                    MRebelExtractor.get_resource(subject.strip(), subject_type),
                     Property(url=None, text=relation.strip()),
-                    MRebelExtractor.get_resource(object_.strip())))
+                    MRebelExtractor.get_resource(object_.strip(), object_type)))
         return triplets
 
     @staticmethod
-    def get_resource(token: str):
-        return Resource(url=None, text=token, start_idx=None, end_idx=None)
+    def get_resource(token: str, type: str):
+        return Entity(url=None, text=token, start_idx=None, end_idx=None, e_type=type)
 
 
 class OpenIEExtractor(RelationExtractor):
