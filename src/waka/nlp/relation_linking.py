@@ -42,6 +42,8 @@ class ElasticRelationLinker(RelationLinker):
             if len(retrieved_properties) > 0:
                 selected = retrieved_properties[0]
                 triple.predicate.url = selected["id"]
+                triple.predicate.label = selected["label"]
+                triple.predicate.description = selected["description"]
 
         return triples
 

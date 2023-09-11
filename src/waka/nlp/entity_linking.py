@@ -67,19 +67,22 @@ class ElasticEntityLinker(EntityLinker):
 
     async def send_request(self, session: aiohttp.ClientSession, entity: Entity) -> List[LinkedEntity]:
         retrieved_entities = []
-        async with session.get(self.search_endpoint, params={"q": entity.text}) as response:
-            body = await response.json()
+        queries = [x.strip() for x in entity.text.split(",")]
 
-            if body["status"] == "success":
-                for e in body["data"]:
-                    retrieved_entities.append(LinkedEntity(
-                        url=e["id"],
-                        start_idx=entity.start_idx,
-                        end_idx=entity.end_idx,
-                        text=entity.text,
-                        label=e["label"],
-                        score=e["score"],
-                        e_type=entity.e_type,
-                        description=e["description"]))
+        for query in queries:
+            async with session.get(self.search_endpoint, params={"q": query}) as response:
+                body = await response.json()
 
-        return retrieved_entities
+                if body["status"] == "success":
+                    for e in body["data"]:
+                        retrieved_entities.append(LinkedEntity(
+                            url=e["id"],
+                            start_idx=entity.start_idx,
+                            end_idx=entity.end_idx,
+                            text=entity.text,
+                            label=e["label"],
+                            score=e["score"],
+                            e_type=entity.e_type,
+                            description=e["description"]))
+
+            return retrieved_entities

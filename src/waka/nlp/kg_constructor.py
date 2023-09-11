@@ -6,6 +6,7 @@ from waka.nlp.entity_recognition import EnsembleNER
 from waka.nlp.kg import Entity, Triple, KnowledgeGraph
 from waka.nlp.relation_extraction import MRebelExtractor
 from waka.nlp.relation_linking import ElasticRelationLinker
+from waka.nlp.semantics import SentenceBert, BartMNLI
 from waka.nlp.text_processor import Pipeline
 
 
@@ -28,6 +29,9 @@ class KnowledgeGraphConstructor:
         self.rl_pipeline.add_processor(self.re)
         self.rl_pipeline.add_processor(self.rl)
 
+        self.triple_scorer = SentenceBert()
+        self.entity_scorer = BartMNLI()
+
         try:
             self.el_pipeline.start()
             self.rl_pipeline.start()
@@ -45,7 +49,7 @@ class KnowledgeGraphConstructor:
         self.logger.debug(f"Found entities: {entities}")
         self.logger.debug(f"Found triples: {triples}")
 
-        kg_builder = KnowledgeGraph.Builder(text, triples, entities)
+        kg_builder = KnowledgeGraph.Builder(text, triples, entities, self.triple_scorer, self.entity_scorer)
         kg = kg_builder.build()
         self.logger.debug(f"Constructed graph: {kg.to_json()}")
 

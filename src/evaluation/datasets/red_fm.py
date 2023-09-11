@@ -1,5 +1,4 @@
 import fileinput
-import fileinput
 import json
 import os
 
@@ -51,7 +50,9 @@ class RedFM(CorpusParser):
 
             predicate = Property(
                 text=relation["predicate"]["surfaceform"],
-                url=f"http://www.wikidata.org/prop/direct/{relation['predicate']['uri']}"
+                url=f"http://www.wikidata.org/prop/direct/{relation['predicate']['uri']}",
+                label=None,
+                description=None
             )
 
             object = relation["object"]
@@ -69,7 +70,7 @@ class RedFM(CorpusParser):
             entities.append(subject_entity)
             entities.append(object_entity)
 
-            triples.append(Triple(subject_entity, predicate, object_entity))
+            triples.append(Triple(subject_entity, predicate, object_entity, None))
 
         kg = KnowledgeGraph(text=text, triples=triples, entities=entities, entity_candidates=[])
 

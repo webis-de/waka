@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import abc
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
+import numpy as np
 from databind.json import dumps
 from pydantic.dataclasses import dataclass
 
@@ -117,7 +118,8 @@ class LinkedEntity(Entity):
 @dataclass(kw_only=True)
 class Property(GenericItem):
     url: Optional[str]
-    text: Optional[str]
+    label: Optional[str]
+    description: Optional[str]
 
     def __hash__(self):
         return hash(f"{self.text}:{self.url}")
@@ -181,9 +183,10 @@ class Property(GenericItem):
 
 @dataclass
 class Triple:
-    subject: Optional[Resource]
+    subject: Optional[LinkedEntity | Entity]
     predicate: Optional[Property]
-    object: Optional[Resource]
+    object: Optional[LinkedEntity | Entity]
+    score: Optional[float]
 
     def to_json(self) -> str:
         return dumps(self, Triple)
@@ -261,7 +264,9 @@ class KnowledgeGraph:
         def __init__(self,
                      text: str,
                      triples: Optional[List[Triple]] = None,
-                     entities: Optional[List[Entity]] = None):
+                     entities: Optional[List[Entity]] = None,
+                     triple_scorer: Optional[Any] = None,
+                     entity_scorer: Optional[Any] = None):
             self.text = text
 
             if triples is not None:
@@ -276,6 +281,9 @@ class KnowledgeGraph:
 
             self.kg = None
 
+            self.triple_scorer = triple_scorer
+            self.entity_scorer = entity_scorer
+
         def add_triple(self, triple: Triple) -> KnowledgeGraph.Builder:
             self.triples.append(triple)
             return self
@@ -285,37 +293,60 @@ class KnowledgeGraph:
             return self
 
         def build(self) -> KnowledgeGraph:
-            entities_by_mention = {}
             self.kg = KnowledgeGraph(text=self.text, triples=[], entities=[], entity_candidates=[])
-
-            for entity in self.entities:
-                if entity.text not in entities_by_mention:
-                    entities_by_mention[entity.text] = []
-
-                entities_by_mention[entity.text].append(entity)
-
-            for mention, entity in entities_by_mention.items():
-                entities_by_mention[mention] = sorted(entities_by_mention[mention], key=lambda e: -e.score)
-                self.kg.entity_candidates.append(entities_by_mention[mention][0])
+            entities_by_mention = self._construct_entity_by_mention_index()
 
             for triple in self.triples:
-                entity = self._get_entity_for_mention(triple.subject.text, entities_by_mention)
+                triple_candidates = []
 
-                if entity is not None:
-                    triple.subject = entity
+                sub_entities = self._get_entities_for_mention(triple.subject.text, entities_by_mention)
+                obj_entities = self._get_entities_for_mention(triple.object.text, entities_by_mention)
 
-                entity = self._get_entity_for_mention(triple.object.text, entities_by_mention)
+                for subj in sub_entities:
+                    for obj in obj_entities:
+                        triple_candidates.append(Triple(subj, triple.predicate, obj, float(np.mean([subj.score, obj.score]))))
 
-                if entity is not None:
-                    triple.object = entity
-
-                if triple.subject.url is not None and triple.object.url is not None:
-                    self.kg.triples.append(triple)
+                triple_candidates = self.triple_scorer.score_triples(triple_candidates)
+                self.kg.triples.append(sorted(triple_candidates, key=lambda t: -t.score)[0])
+                # entity = self._get_entity_for_mention(triple.subject.text, entities_by_mention)
+                #
+                # if entity is not None:
+                #     triple.subject = entity
+                #
+                # entity = self._get_entity_for_mention(triple.object.text, entities_by_mention)
+                #
+                # if entity is not None:
+                #     triple.object = entity
+                #
+                # if triple.subject.url is not None and triple.object.url is not None:
+                #     self.kg.triples.append(triple)
 
             self.kg.entities = list(set(self.kg.entities))
             self.kg.triples = list(set(self.kg.triples))
 
             return self.kg
+
+        def _construct_entity_by_mention_index(self) -> Dict[str, List[Entity | LinkedEntity]]:
+            entities_by_mention = {}
+            urls_by_mention = {}
+
+            for entity in self.entities:
+                if entity.text not in entities_by_mention:
+                    entities_by_mention[entity.text] = []
+                if entity.text not in urls_by_mention:
+                    urls_by_mention[entity.text] = set()
+
+                if entity.url in urls_by_mention[entity.text]:
+                    continue
+
+                urls_by_mention[entity.text].add(entity.url)
+                entities_by_mention[entity.text].append(entity)
+
+            for mention, entity in entities_by_mention.items():
+                entities_by_mention[mention] = self.entity_scorer.score_entities(self.text, entities_by_mention[mention])
+                entities_by_mention[mention] = sorted(entities_by_mention[mention], key=lambda e: -e.score)
+
+            return entities_by_mention
 
         def _get_entity_for_mention(self, mention: str, entities_by_mention: dict) -> Optional[LinkedEntity | Entity]:
             if mention in entities_by_mention:
@@ -348,3 +379,19 @@ class KnowledgeGraph:
                         return entity
 
             return None
+
+        @staticmethod
+        def _get_entities_for_mention(mention: str,
+                                      entities_by_mention: Dict[str, List[Entity | LinkedEntity]]) \
+                -> List[Entity | LinkedEntity]:
+            entities = []
+
+            if mention in entities_by_mention:
+                entities.extend(entities_by_mention[mention])
+            else:
+                for mention_key in entities_by_mention:
+                    if mention in mention_key:
+                        entities.extend(entities_by_mention[mention_key])
+
+            return entities
+

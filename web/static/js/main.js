@@ -5,7 +5,6 @@ function main(){
 
     kgButton.addEventListener("click", onKgButtonClicked)
 
-    let overlay = document.getElementById("overlay")
     let overlayCloseButton = document.getElementById("overlay-close")
     overlayCloseButton.addEventListener("click", function (){
         let overlay = document.getElementById("overlay")
@@ -36,65 +35,6 @@ function onKgButtonClicked(e){
     let postData = {"content": editorContent}
 
     requestBackend("POST","/api/v1/kg", null, null, postData, onKgReceive)
-    // onKgReceive("{\n" +
-    //     "  \"text\": \"The Bauhaus-Universität Weimar is a university located in Weimar, Germany.\",\n" +
-    //     "  \"triples\": [\n" +
-    //     "    {\n" +
-    //     "      \"subject\": {\n" +
-    //     "        \"url\": \"http://www.wikidata.org/entity/Q573975\",\n" +
-    //     "        \"start_idx\": 4,\n" +
-    //     "        \"end_idx\": 30,\n" +
-    //     "        \"text\": \"Bauhaus-Universität Weimar\"\n" +
-    //     "      },\n" +
-    //     "      \"predicate\": {\n" +
-    //     "        \"url\": \"http://www.wikidata.org/prop/direct/P131\",\n" +
-    //     "        \"text\": \"located in the administrative territorial entity\"\n" +
-    //     "      },\n" +
-    //     "      \"object\": {\n" +
-    //     "        \"url\": \"http://www.wikidata.org/entity/Q3955\",\n" +
-    //     "        \"start_idx\": 58,\n" +
-    //     "        \"end_idx\": 64,\n" +
-    //     "        \"text\": \"Weimar\"\n" +
-    //     "      }\n" +
-    //     "    },\n" +
-    //     "    {\n" +
-    //     "      \"subject\": {\n" +
-    //     "        \"url\": \"http://www.wikidata.org/entity/Q573975\",\n" +
-    //     "        \"start_idx\": 4,\n" +
-    //     "        \"end_idx\": 30,\n" +
-    //     "        \"text\": \"Bauhaus-Universität Weimar\"\n" +
-    //     "      },\n" +
-    //     "      \"predicate\": {\n" +
-    //     "        \"url\": \"http://www.wikidata.org/prop/direct/P17\",\n" +
-    //     "        \"text\": \"country\"\n" +
-    //     "      },\n" +
-    //     "      \"object\": {\n" +
-    //     "        \"url\": \"http://www.wikidata.org/entity/Q183\",\n" +
-    //     "        \"start_idx\": 66,\n" +
-    //     "        \"end_idx\": 73,\n" +
-    //     "        \"text\": \"Germany\"\n" +
-    //     "      }\n" +
-    //     "    },\n" +
-    //     "    {\n" +
-    //     "      \"subject\": {\n" +
-    //     "        \"url\": \"http://www.wikidata.org/entity/Q3955\",\n" +
-    //     "        \"start_idx\": 58,\n" +
-    //     "        \"end_idx\": 64,\n" +
-    //     "        \"text\": \"Weimar\"\n" +
-    //     "      },\n" +
-    //     "      \"predicate\": {\n" +
-    //     "        \"url\": \"http://www.wikidata.org/prop/direct/P17\",\n" +
-    //     "        \"text\": \"country\"\n" +
-    //     "      },\n" +
-    //     "      \"object\": {\n" +
-    //     "        \"url\": \"http://www.wikidata.org/entity/Q183\",\n" +
-    //     "        \"start_idx\": 66,\n" +
-    //     "        \"end_idx\": 73,\n" +
-    //     "        \"text\": \"Germany\"\n" +
-    //     "      }\n" +
-    //     "    }\n" +
-    //     "  ]\n" +
-    //     "}")
 }
 
 function onKgReceive(responseText){
@@ -130,8 +70,6 @@ function onKgReceive(responseText){
     textEditor.appendChild(textNode)
 
     drawKG(kg)
-
-    // textEditor.setAttribute("contenteditable", false)
 }
 
 function createDOMElementFromEntity(entity){
@@ -178,9 +116,10 @@ function createDOMElementFromEntity(entity){
 }
 
 function createNodeFromEntity(entity){
+    console.log(entity)
     return {
         id: entity.url,
-        label: entity.text,
+        label: entity.label ? entity.label : entity.text,
         chosen: {
             node: function (values, id, selected, hovering) {
                 if (!hovering){

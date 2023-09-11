@@ -1,16 +1,11 @@
 import logging
-from typing import List
+import multiprocessing
 
-from waka.nlp.entity_linking import ElasticEntityLinker
-from waka.nlp.entity_recognition import SpacyNER
-from waka.nlp.kg import KnowledgeGraph, Entity, Triple
 from waka.nlp.kg_constructor import KnowledgeGraphConstructor
-from waka.nlp.relation_extraction import OpenIEExtractor, MRebelExtractor
-from waka.nlp.relation_linking import ElasticRelationLinker
-from waka.nlp.text_processor import Pipeline
 
 
 def main():
+    multiprocessing.set_start_method("spawn")
     logging.basicConfig(level=logging.DEBUG)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
@@ -24,7 +19,10 @@ def main():
            "over the world."
 
     kg_construct = KnowledgeGraphConstructor()
-    print(kg_construct.construct("The Bauhaus-Universität Weimar is a university located in Weimar, Germany.").to_json())
+    kg = kg_construct.construct(text)
+
+    for triple in kg.triples:
+        print(f"{triple.subject.label},{triple.predicate.label},{triple.object.label}")
 
 
 if __name__ == '__main__':

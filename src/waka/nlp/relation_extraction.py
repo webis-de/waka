@@ -52,13 +52,13 @@ class RebelExtractor(RelationExtractor):
             if token == "<triplet>":
                 current_type = TokenType.TRIPLE
                 if predicate is not None:
-                    triples.append(Triple(subject, predicate, object_))
+                    triples.append(Triple(subject, predicate, object_, None))
                     predicate = None
                 subject = None
             elif token == "<subj>":
                 current_type = TokenType.SUBJECT
                 if predicate is not None:
-                    triples.append(Triple(subject, predicate, object_))
+                    triples.append(Triple(subject, predicate, object_, None))
                 object_ = None
             elif token == "<obj>":
                 current_type = TokenType.OBJECT
@@ -80,13 +80,13 @@ class RebelExtractor(RelationExtractor):
                     object_.end_idx = object_.start_idx + len(object_.text)
                 elif current_type == TokenType.OBJECT:
                     if predicate is None:
-                        predicate = Property(text="")
+                        predicate = Property(text="", url=None, label=None, description=None)
 
                     predicate.text += ' ' + token
                     predicate.text = predicate.text.strip()
 
         if subject is not None and predicate is not None and object_ is not None:
-            triples.append(Triple(subject, predicate, object_))
+            triples.append(Triple(subject, predicate, object_, None))
 
         return triples
 
@@ -175,8 +175,9 @@ class MRebelExtractor(RelationExtractor):
                 if relation != '':
                     triplets.append(Triple(
                         MRebelExtractor.get_resource(subject.strip(), subject_type),
-                        Property(url=None, text=relation.strip()),
-                        MRebelExtractor.get_resource(object_.strip(), object_type)))
+                        Property(url=None, text=relation.strip(), label=None, description=None),
+                        MRebelExtractor.get_resource(object_.strip(), object_type),
+                        None))
                     relation = ''
                 subject = ''
             elif token.startswith("<") and token.endswith(">"):
@@ -185,8 +186,9 @@ class MRebelExtractor(RelationExtractor):
                     if relation != '':
                         triplets.append(Triple(
                             MRebelExtractor.get_resource(subject.strip(), subject_type),
-                            Property(url=None, text=relation.strip()),
-                            MRebelExtractor.get_resource(object_.strip(), object_type)))
+                            Property(url=None, text=relation.strip(), label=None, description=None),
+                            MRebelExtractor.get_resource(object_.strip(), object_type),
+                            None))
                     object_ = ''
                     subject_type = token[1:-1]
                 else:
@@ -204,8 +206,9 @@ class MRebelExtractor(RelationExtractor):
             triplets.append(
                 Triple(
                     MRebelExtractor.get_resource(subject.strip(), subject_type),
-                    Property(url=None, text=relation.strip()),
-                    MRebelExtractor.get_resource(object_.strip(), object_type)))
+                    Property(url=None, text=relation.strip(), label=None, description=None),
+                    MRebelExtractor.get_resource(object_.strip(), object_type),
+                    None))
         return triplets
 
     @staticmethod
