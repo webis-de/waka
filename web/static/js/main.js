@@ -1,8 +1,9 @@
+import {KgVis} from "./kg-vis.js";
+
 window.addEventListener("DOMContentLoaded", main)
 
 function main(){
     let kgButton = document.getElementById("create-kg-button")
-
     kgButton.addEventListener("click", onKgButtonClicked)
 
     let overlayCloseButton = document.getElementById("overlay-close")
@@ -34,7 +35,67 @@ function onKgButtonClicked(e){
 
     let postData = {"content": editorContent}
 
-    requestBackend("POST","/api/v1/kg", null, null, postData, onKgReceive)
+    // requestBackend("POST","/api/v1/kg", null, null, postData, onKgReceive)
+    onKgReceive("{\n" +
+        "  \"text\": \"The Bauhaus-Universität Weimar is a university located in Weimar, Germany.\",\n" +
+        "  \"entities\": [],\n" +
+        "  \"triples\": [\n" +
+        "    {\n" +
+        "      \"subject\": {\n" +
+        "        \"url\": \"http://www.wikidata.org/entity/Q573975\",\n" +
+        "        \"start_idx\": 4,\n" +
+        "        \"end_idx\": 30,\n" +
+        "        \"text\": \"Bauhaus-Universität Weimar\"\n" +
+        "      },\n" +
+        "      \"predicate\": {\n" +
+        "        \"url\": \"http://www.wikidata.org/prop/direct/P131\",\n" +
+        "        \"text\": \"located in the administrative territorial entity\"\n" +
+        "      },\n" +
+        "      \"object\": {\n" +
+        "        \"url\": \"http://www.wikidata.org/entity/Q3955\",\n" +
+        "        \"start_idx\": 58,\n" +
+        "        \"end_idx\": 64,\n" +
+        "        \"text\": \"Weimar\"\n" +
+        "      }\n" +
+        "    },\n" +
+        "    {\n" +
+        "      \"subject\": {\n" +
+        "        \"url\": \"http://www.wikidata.org/entity/Q573975\",\n" +
+        "        \"start_idx\": 4,\n" +
+        "        \"end_idx\": 30,\n" +
+        "        \"text\": \"Bauhaus-Universität Weimar\"\n" +
+        "      },\n" +
+        "      \"predicate\": {\n" +
+        "        \"url\": \"http://www.wikidata.org/prop/direct/P17\",\n" +
+        "        \"text\": \"country\"\n" +
+        "      },\n" +
+        "      \"object\": {\n" +
+        "        \"url\": \"http://www.wikidata.org/entity/Q183\",\n" +
+        "        \"start_idx\": 66,\n" +
+        "        \"end_idx\": 73,\n" +
+        "        \"text\": \"Germany\"\n" +
+        "      }\n" +
+        "    },\n" +
+        "    {\n" +
+        "      \"subject\": {\n" +
+        "        \"url\": \"http://www.wikidata.org/entity/Q3955\",\n" +
+        "        \"start_idx\": 58,\n" +
+        "        \"end_idx\": 64,\n" +
+        "        \"text\": \"Weimar\"\n" +
+        "      },\n" +
+        "      \"predicate\": {\n" +
+        "        \"url\": \"http://www.wikidata.org/prop/direct/P17\",\n" +
+        "        \"text\": \"country\"\n" +
+        "      },\n" +
+        "      \"object\": {\n" +
+        "        \"url\": \"http://www.wikidata.org/entity/Q183\",\n" +
+        "        \"start_idx\": 66,\n" +
+        "        \"end_idx\": 73,\n" +
+        "        \"text\": \"Germany\"\n" +
+        "      }\n" +
+        "    }\n" +
+        "  ]\n" +
+        "}")
 }
 
 function onKgReceive(responseText){
@@ -69,7 +130,8 @@ function onKgReceive(responseText){
     let textNode = document.createTextNode(kg.text.substring(idx))
     textEditor.appendChild(textNode)
 
-    drawKG(kg)
+    let kgVis = new KgVis(kg)
+    kgVis.draw(document.getElementById("kg-vis"))
 }
 
 function createDOMElementFromEntity(entity){
@@ -113,40 +175,6 @@ function createDOMElementFromEntity(entity){
     })
 
     return entitySpan
-}
-
-function createNodeFromEntity(entity){
-    console.log(entity)
-    return {
-        id: entity.url,
-        label: entity.label ? entity.label : entity.text,
-        chosen: {
-            node: function (values, id, selected, hovering) {
-                if (!hovering){
-                    values.color = getComputedStyle(document.documentElement).getPropertyValue("--default-color")
-                } else{
-                    values.color = getComputedStyle(document.documentElement).getPropertyValue("--highlight-color")
-                }
-            },
-            label: function (values, id, selected, hovering) {
-                if (!hovering){
-                    values.mod = false
-                }
-            }
-        },
-        color: {
-            border: "white",
-            background: getComputedStyle(document.documentElement).getPropertyValue("--default-color"),
-            hover: {
-                background: getComputedStyle(document.documentElement).getPropertyValue("--highlight-color"),
-            }
-        },
-        font: {
-            face: "Curier",
-            color: "#fff",
-            bold: true
-        }
-    }
 }
 
 function drawEntityChangePanel(entitySpan){
@@ -224,86 +252,6 @@ function drawEntityChangePanel(entitySpan){
                 entity.appendChild(entityFreq)
             }
         })
-}
-
-function drawKG(kg){
-    let nodesMap = new Map()
-    let edges = []
-
-    for (let triple of kg.triples){
-
-        if(!nodesMap.has(triple.subject.url)){
-            nodesMap.set(triple.subject.url,
-                createNodeFromEntity(triple.subject))
-        }
-
-        if(!nodesMap.has(triple.object.url)){
-            nodesMap.set(triple.object.url,
-                createNodeFromEntity(triple.object))
-        }
-
-        let edge = {
-            from: triple.subject.url,
-            to: triple.object.url,
-            label: triple.predicate.text,
-            arrows: { to: true },
-            color: "#000",
-            font: {
-                face: "Curier",
-                color: "#000",
-                bold: true
-            }
-        }
-
-        edges.push(edge)
-
-    }
-
-    let data = {
-        nodes: new vis.DataSet(Array.from(nodesMap.values())),
-        edges: new vis.DataSet(edges)
-    };
-
-    let options = {
-        "interaction": {
-            "hover": true,
-            "hoverConnectedEdges": false,
-            "selectable": false,
-            "selectConnectedEdges": false,
-            "navigationButtons": true
-        },
-        "layout": {"improvedLayout": false},
-        "physics": {"enabled": true, "solver": "forceAtlas2Based",
-            "repulsion": {
-                "damping": 1,
-                "nodeDistance": 300
-            }, "forceAtlas2Based": {
-                "avoidOverlap": 0
-            }}
-    };
-
-    let container = document.getElementById("kg-vis")
-    let network = new vis.Network(container, data, options)
-
-    network.on("stabilizationIterationsDone", function (){
-        network.setOptions({physics: {enabled: false}})
-    })
-
-    network.on("hoverNode", function (e){
-        let entitySpans = document.querySelectorAll("[href=\""+ e.node + "\"]")
-
-        for (let entitySpan of entitySpans){
-            entitySpan.classList.add("highlight")
-        }
-    })
-
-    network.on("blurNode", function (e){
-        let entitySpans = document.querySelectorAll("[href=\""+ e.node + "\"]")
-
-        for (let entitySpan of entitySpans){
-            entitySpan.classList.remove("highlight")
-        }
-    })
 }
 
 function requestBackend(method, url, params, header, data, callback){

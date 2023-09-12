@@ -10,7 +10,7 @@ install_venv:
 	. venv/bin/activate; python -c "import stanza; stanza.download('en')"
 
 install_dep:
-	sudo apt install libpq-dev
+	sudo apt install libpq-dev libfreetype-dev libpng-dev
 
 install: install_dep install_venv
 
