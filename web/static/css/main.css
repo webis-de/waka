@@ -124,7 +124,7 @@ body{
 }
 
 #kg-vis {
-    border: gray 1px solid;
+    border: grey 1px solid;
     border-radius: 5px;
     background-color: white;
     flex: 1 0 auto;
@@ -148,6 +148,18 @@ body{
     padding: 4px;
 }
 
+.entity-description {
+    background-color: var(--default-color);
+    color: var(--default-font-color);
+    text-align: center;
+    padding: 5px;
+    border-radius: 6px;
+    display: block;
+    width: 400px;
+    font-family: var(--default-font);
+    line-height: normal;
+}
+
 .entity:hover {
     background-color: var(--highlight-color);
     transition-delay: 0s;
@@ -159,22 +171,13 @@ body{
 
 .entity .entity-description{
     visibility: hidden;
-    background-color: rgb(0, 107, 148);
-    color: #fff;
-    text-align: center;
-    padding: 5px;
-    border-radius: 6px;
-    position: absolute;
-    z-index: 1;
     bottom: 120%;
     left: 50%;
     margin-left: -200px;
-    display: block;
-    width: 400px;
-    font-family: "Helvetica", serif;
-    line-height: normal;
     transition-delay: 0s;
-    transition-duration: 200ms;
+    transition-duration: 100ms;
+    position: absolute;
+    z-index: 1;
 }
 
 .entity .entity-description::after {

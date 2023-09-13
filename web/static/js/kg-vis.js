@@ -1,3 +1,5 @@
+import {createEntityDescription} from "./main.js"
+
 export class KgVis{
     static #defaultOptions = {
         interaction: {
@@ -5,7 +7,8 @@ export class KgVis{
             hoverConnectedEdges: false,
             selectable: false,
             selectConnectedEdges: false,
-            navigationButtons: true
+            navigationButtons: true,
+            tooltipDelay: 0
         },
         layout: {improvedLayout: false},
         physics: {enabled: true, solver: "forceAtlas2Based",
@@ -92,6 +95,7 @@ export class KgVis{
         return {
             id: entity.url,
             label: entity.label ? entity.label : entity.text,
+            title: createEntityDescription(entity),
             ...KgVis.#defaultNodeOptions
         }
     }
@@ -101,6 +105,7 @@ export class KgVis{
             from: triple.subject.url,
             to: triple.object.url,
             label: triple.predicate.text,
+            title: createEntityDescription(triple.predicate),
             ...KgVis.#defaultEdgeOptions
         }
     }
@@ -134,5 +139,17 @@ export class KgVis{
                 entitySpan.classList.remove("highlight")
             }
         })
+    }
+
+    getNodeById(id){
+        return this.#nodes.get(id)
+    }
+
+    getNetwork(){
+        return this.#network
+    }
+
+    addNode(node){
+        this.#nodes.update(node)
     }
 }

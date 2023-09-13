@@ -2,6 +2,8 @@ import {KgVis} from "./kg-vis.js";
 
 window.addEventListener("DOMContentLoaded", main)
 
+let kgVis = null
+
 function main(){
     let kgButton = document.getElementById("create-kg-button")
     kgButton.addEventListener("click", onKgButtonClicked)
@@ -36,66 +38,7 @@ function onKgButtonClicked(e){
     let postData = {"content": editorContent}
 
     // requestBackend("POST","/api/v1/kg", null, null, postData, onKgReceive)
-    onKgReceive("{\n" +
-        "  \"text\": \"The Bauhaus-Universität Weimar is a university located in Weimar, Germany.\",\n" +
-        "  \"entities\": [],\n" +
-        "  \"triples\": [\n" +
-        "    {\n" +
-        "      \"subject\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/entity/Q573975\",\n" +
-        "        \"start_idx\": 4,\n" +
-        "        \"end_idx\": 30,\n" +
-        "        \"text\": \"Bauhaus-Universität Weimar\"\n" +
-        "      },\n" +
-        "      \"predicate\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/prop/direct/P131\",\n" +
-        "        \"text\": \"located in the administrative territorial entity\"\n" +
-        "      },\n" +
-        "      \"object\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/entity/Q3955\",\n" +
-        "        \"start_idx\": 58,\n" +
-        "        \"end_idx\": 64,\n" +
-        "        \"text\": \"Weimar\"\n" +
-        "      }\n" +
-        "    },\n" +
-        "    {\n" +
-        "      \"subject\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/entity/Q573975\",\n" +
-        "        \"start_idx\": 4,\n" +
-        "        \"end_idx\": 30,\n" +
-        "        \"text\": \"Bauhaus-Universität Weimar\"\n" +
-        "      },\n" +
-        "      \"predicate\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/prop/direct/P17\",\n" +
-        "        \"text\": \"country\"\n" +
-        "      },\n" +
-        "      \"object\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/entity/Q183\",\n" +
-        "        \"start_idx\": 66,\n" +
-        "        \"end_idx\": 73,\n" +
-        "        \"text\": \"Germany\"\n" +
-        "      }\n" +
-        "    },\n" +
-        "    {\n" +
-        "      \"subject\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/entity/Q3955\",\n" +
-        "        \"start_idx\": 58,\n" +
-        "        \"end_idx\": 64,\n" +
-        "        \"text\": \"Weimar\"\n" +
-        "      },\n" +
-        "      \"predicate\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/prop/direct/P17\",\n" +
-        "        \"text\": \"country\"\n" +
-        "      },\n" +
-        "      \"object\": {\n" +
-        "        \"url\": \"http://www.wikidata.org/entity/Q183\",\n" +
-        "        \"start_idx\": 66,\n" +
-        "        \"end_idx\": 73,\n" +
-        "        \"text\": \"Germany\"\n" +
-        "      }\n" +
-        "    }\n" +
-        "  ]\n" +
-        "}")
+    onKgReceive(JSON.stringify(debugKG()))
 }
 
 function onKgReceive(responseText){
@@ -123,24 +66,50 @@ function onKgReceive(responseText){
             textEditor.appendChild(textNode)
         }
 
-        textEditor.appendChild(createDOMElementFromEntity(entity))
+        textEditor.appendChild(createEntitySpan(entity))
         idx = entity.end_idx
     }
 
     let textNode = document.createTextNode(kg.text.substring(idx))
     textEditor.appendChild(textNode)
 
-    let kgVis = new KgVis(kg)
+    kgVis = new KgVis(kg)
     kgVis.draw(document.getElementById("kg-vis"))
 }
 
-function createDOMElementFromEntity(entity){
+function createEntitySpan(entity){
     let entitySpan = document.createElement("span")
     entitySpan.innerText = entity.text
     entitySpan.classList.add("entity")
     entitySpan.setAttribute("href", entity.url)
 
-    let entityDescription = document.createElement("span")
+    entitySpan.appendChild(createEntityDescription(entity))
+
+    entitySpan.addEventListener("click", function (e){
+        drawEntityChangePanel(e.target)
+    })
+
+    entitySpan.addEventListener("mouseover", function (e){
+        if (kgVis !== null){
+            let node = kgVis.getNodeById(e.target.getAttribute("href"))
+            node.color = getComputedStyle(document.documentElement).getPropertyValue("--highlight-color")
+            kgVis.addNode(node)
+        }
+    })
+
+    entitySpan.addEventListener("mouseout", function (e){
+        if (kgVis !== null){
+            let node = kgVis.getNodeById(e.target.getAttribute("href"))
+            node.color = getComputedStyle(document.documentElement).getPropertyValue("--default-color")
+            kgVis.addNode(node)
+        }
+    })
+
+    return entitySpan
+}
+
+export function createEntityDescription(entity){
+    let entityDescription = document.createElement("div")
     entityDescription.classList.add("entity-description")
     entityDescription.setAttribute("contenteditable", false)
 
@@ -160,21 +129,11 @@ function createDOMElementFromEntity(entity){
     link.innerText = entity.url
     entityDescription.appendChild(link)
 
-    entitySpan.appendChild(entityDescription)
-
-    // entitySpan.addEventListener("dblclick", function (e){
-    //     window.open(e.target.getAttribute("href"), "_blank").focus()
-    // })
-
-    entitySpan.addEventListener("click", function (e){
-        drawEntityChangePanel(e.target)
-    })
-
     entityDescription.addEventListener("click", function (e){
         e.stopPropagation()
     })
 
-    return entitySpan
+    return entityDescription
 }
 
 function drawEntityChangePanel(entitySpan){
@@ -289,4 +248,119 @@ function formatParams( params ){
             return key+"="+encodeURIComponent(params[key])
         })
         .join("&")
+}
+
+function debugKG() {
+    return {
+        text: "The Bauhaus-Universität Weimar is a university located in Weimar, Germany.",
+        entities: [
+            {
+                    url: "http://www.wikidata.org/entity/Q573975",
+                    start_idx: 4,
+                    end_idx: 30,
+                    text: "Bauhaus-Universität Weimar",
+                    label: "Bauhaus-University Weimar",
+                    score: 1.0,
+                    description: "university"
+            },
+            {
+                    url: "http://www.wikidata.org/entity/Q3955",
+                    start_idx: 58,
+                    end_idx: 64,
+                    text: "Weimar",
+                    label: "Weimar",
+                    score: 1.0,
+                    description: "city in the federal state of Thuringia, Germany"
+            },
+            {
+                    url: "http://www.wikidata.org/entity/Q183",
+                    start_idx: 66,
+                    end_idx: 73,
+                    text: "Germany",
+                    label: "Germany",
+                    score: 1.0,
+                    description: "country in Central Europe"
+            }
+        ],
+        triples: [
+            {
+                subject: {
+                    url: "http://www.wikidata.org/entity/Q573975",
+                    start_idx: 4,
+                    end_idx: 30,
+                    text: "Bauhaus-Universität Weimar",
+                    label: "Bauhaus-University Weimar",
+                    score: 1.0,
+                    description: "university"
+                },
+                predicate: {
+                    url: "http://www.wikidata.org/prop/direct/P131",
+                    text: "located in the administrative territorial entity",
+                    label: "located in the administrative territorial entity",
+                    description: "the item is located on the territory of the following administrative entity. Use P276 for specifying locations that are non-administrative places and for items about events. Use P1382 if the item falls only partially into the administrative entity."
+                },
+                object: {
+                    url: "http://www.wikidata.org/entity/Q3955",
+                    start_idx: 58,
+                    end_idx: 64,
+                    text: "Weimar",
+                    label: "Weimar",
+                    score: 1.0,
+                    description: "city in the federal state of Thuringia, Germany"
+                }
+            },
+            {
+                subject: {
+                    url: "http://www.wikidata.org/entity/Q573975",
+                    start_idx: 4,
+                    end_idx: 30,
+                    text: "Bauhaus-Universität Weimar",
+                    label: "Bauhaus-University Weimar",
+                    score: 1.0,
+                    description: "university"
+                },
+                predicate: {
+                    url: "http://www.wikidata.org/prop/direct/P17",
+                    text: "country",
+                    label: "country",
+                    description: "sovereign state that this item is in (not to be used for human beings)"
+                },
+                object: {
+                    url: "http://www.wikidata.org/entity/Q183",
+                    start_idx: 66,
+                    end_idx: 73,
+                    text: "Germany",
+                    label: "Germany",
+                    score: 1.0,
+                    description: "country in Central Europe"
+                }
+            },
+            {
+                subject: {
+                    url: "http://www.wikidata.org/entity/Q3955",
+                    start_idx: 58,
+                    end_idx: 64,
+                    text: "Weimar",
+                    label: "Weimar",
+                    score: 1.0,
+                    description: "city in the federal state of Thuringia, Germany"
+                },
+                predicate: {
+                    url: "http://www.wikidata.org/prop/direct/P17",
+                    text: "country",
+                    label: "country",
+                    description: "sovereign state that this item is in (not to be used for human beings)"
+                },
+                object: {
+                    url: "http://www.wikidata.org/entity/Q183",
+                    start_idx: 66,
+                    end_idx: 73,
+                    text: "Germany",
+                    label: "Germany",
+                    score: 1.0,
+                    description: "country in Central Europe"
+                }
+            },
+        ]
+    }
 }
