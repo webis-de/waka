@@ -99,7 +99,7 @@ body{
 
 #text-editor {
     padding: 10px;
-    border: gray 1px solid;
+    border: grey 1px solid;
     border-radius: 5px;
     font-family: "Courier", sans-serif;
     font-size: 14pt;
@@ -110,9 +110,16 @@ body{
     line-height: 4ex;
 }
 
+#text-editor[contenteditable=false]{
+    background-color: rgb(240, 240, 240);
+}
+
 #text-editor-button-container {
     margin-top: 1em;
     position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-content: center;
 }
 
 #kg-vis-container{
@@ -265,7 +272,7 @@ body{
 
 .overlay-entity-container {
     display: flex;
-    border: gray 1px solid;
+    border: grey 1px solid;
     align-content: center;
 }
 
@@ -293,7 +300,7 @@ body{
     border: 3px solid;
     border-radius: 50%;
     animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-    border-color: gray transparent transparent transparent;
+    border-color: grey transparent transparent transparent;
 }
 
 .lds-ring div:nth-child(1) {
@@ -320,5 +327,20 @@ body{
 
 button {
     font-size: 15pt;
-    font-family: "Helvetica", serif;
+    font-family: inherit;
+    background-color: black;
+    color: white;
+    border-radius: 8px;
+    box-shadow: lightgray;
+    padding: 4px;
+    /*border: var(--default-color) solid 2pt;*/
+}
+
+button[disabled]{
+    background-color: grey;
+}
+
+
+button:not([disabled]):hover {
+    opacity: 0.5;
 }

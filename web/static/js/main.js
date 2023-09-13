@@ -31,6 +31,8 @@ function onKgButtonClicked(e){
     loadingRing.classList.add("visible")
 
     let editor = document.getElementById("text-editor")
+    // editor.setAttribute("contenteditable", false)
+
     let editorContent = editor.innerText
     editorContent = editorContent.trim()
     editorContent = editorContent.replaceAll(/[\s\n]+/g, " ")
@@ -43,7 +45,7 @@ function onKgButtonClicked(e){
 
 function onKgReceive(responseText){
     let kgButton = document.getElementById("create-kg-button")
-    kgButton.disabled = false
+
 
     let loadingRing = document.getElementById("loading-ring")
     loadingRing.classList.remove("visible")
