@@ -20,6 +20,27 @@ function main(){
             overlayCloseButton.dispatchEvent(new Event("click"))
         }
     })
+
+    let textEditor = document.getElementById("text-editor")
+    window.addEventListener("mouseup", function (e){
+        let editor = document.getElementById("text-editor")
+        let annToolbox = document.getElementById("ann-toolbox")
+        let selection = window.getSelection()
+        if(selection.type === "Range"){
+            let range = selection.getRangeAt(0)
+            let container = range.commonAncestorContainer
+            if (editor.contains(container)){
+                let clientRect = range.getBoundingClientRect()
+                annToolbox.style.top = (clientRect.top - 22) + "px"
+                annToolbox.style.left = clientRect.left + "px"
+                annToolbox.style.visibility = "visible"
+                console.log(container.textContent.substring(range.startOffset, range.endOffset))
+            }
+        } else{
+            annToolbox.style.visibility = "hidden"
+        }
+
+    })
 }
 
 function onKgButtonClicked(e){

@@ -114,6 +114,11 @@ body{
     background-color: rgb(240, 240, 240);
 }
 
+#text-editor::-moz-selection, #text-editor::selection{
+    background: var(--default-color);
+    color: white;
+}
+
 #text-editor-button-container {
     margin-top: 1em;
     position: relative;
@@ -343,4 +348,16 @@ button[disabled]{
 
 button:not([disabled]):hover {
     opacity: 0.5;
+}
+
+#ann-toolbox{
+    position: fixed;
+    z-index: 2;
+    border: 2px solid black;
+    border-radius: 4px;
+    background-color: white;
+    top: 0;
+    left: 0;
+    font-family: var(--default-font);
+    visibility: hidden;
 }
