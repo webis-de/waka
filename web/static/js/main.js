@@ -60,8 +60,8 @@ function onKgButtonClicked(e){
 
     let postData = {"content": editorContent}
 
-    // requestBackend("POST","/api/v1/kg", null, null, postData, onKgReceive)
-    onKgReceive(JSON.stringify(debugKG()))
+    requestBackend("POST","/api/v1/kg", null, null, postData, onKgReceive)
+    // onKgReceive(JSON.stringify(debugKG()))
 }
 
 function onKgReceive(responseText){

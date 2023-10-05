@@ -1,7 +1,7 @@
 import logging
 import multiprocessing
 
-from waka.nlp.kg_constructor import KnowledgeGraphConstructor
+from waka.nlp.kg_construction import KGConstructor
 
 
 def main():
@@ -18,7 +18,7 @@ def main():
            "2019 the university celebrated the centenary of the founding of the Bauhaus, together with partners all " \
            "over the world."
 
-    kg_construct = KnowledgeGraphConstructor()
+    kg_construct = KGConstructor()
     kg = kg_construct.construct(text)
 
     for triple in kg.triples:

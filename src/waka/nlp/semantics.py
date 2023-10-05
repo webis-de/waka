@@ -1,3 +1,4 @@
+import abc
 from typing import List
 
 import numpy as np
@@ -9,11 +10,17 @@ from transformers import pipeline
 from waka.nlp.kg import Triple, Entity, LinkedEntity
 
 
-class SentenceBert:
+class TripleScorer(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def score(self, text: str, triples: List[Triple]) -> List[Triple]:
+        pass
+
+
+class SentenceBert(TripleScorer):
     def __init__(self):
         self.sentence_transformer = SentenceTransformer("paraphrase-mpnet-base-v2", device="cuda")
 
-    def score(self, *texts: str) -> ndarray[float, dtype[float]]:
+    def _score(self, *texts: str) -> ndarray[float, dtype[float]]:
         embeddings = self.sentence_transformer.encode(texts,
                                                       convert_to_tensor=True)
 
@@ -25,7 +32,7 @@ class SentenceBert:
 
         return np.mean(flat_sim_triples, axis=1)
 
-    def score_triples(self, triples: List[Triple]) -> List[Triple]:
+    def score(self, text: str, triples: List[Triple]) -> List[Triple]:
         texts = []
 
         for triple in triples:
@@ -33,7 +40,7 @@ class SentenceBert:
             texts.append(f"{triple.predicate.label} is {triple.predicate.description}")
             texts.append(f"{triple.object.label} is {triple.object.description}")
 
-        scores = self.score(*texts)
+        scores = self._score(*texts)
 
         for i in range(len(triples)):
             triples[i].score *= float(scores[i])
@@ -41,11 +48,17 @@ class SentenceBert:
         return triples
 
 
-class BartMNLI:
+class EntityScorer(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def score(self, text: str, entities: List[Entity | LinkedEntity]) -> List[Entity | LinkedEntity]:
+        pass
+
+
+class BartMNLI(EntityScorer):
     def __init__(self):
         self.classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli", device="cuda")
 
-    def score_entities(self, text: str, entities: List[Entity | LinkedEntity]) -> List[Entity | LinkedEntity]:
+    def score(self, text: str, entities: List[Entity | LinkedEntity]) -> List[Entity | LinkedEntity]:
         labels = [e.label for e in entities if isinstance(e, LinkedEntity)]
 
         if len(labels) > 0:

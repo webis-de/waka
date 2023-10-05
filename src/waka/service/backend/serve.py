@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from waka.nlp.kg import KnowledgeGraph
-from waka.nlp.kg_constructor import KnowledgeGraphConstructor
+from waka.nlp.kg_construction import KGConstructor
 
 
 class Text(BaseModel):
@@ -43,7 +43,7 @@ def app():
 class KGConstructionRouter(APIRouter):
     def __init__(self):
         super().__init__()
-        self.kg_construct = KnowledgeGraphConstructor()
+        self.kg_construct = KGConstructor()
 
         self.add_api_route(path="/api/v1/kg",
                            endpoint=self.create_kg,
