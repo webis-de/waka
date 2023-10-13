@@ -1,7 +1,7 @@
 import multiprocessing
 from typing import List
 
-from evaluation.datasets.red_fm import RedFM
+from evaluation.corpora.red_fm import RedFM
 from waka.nlp.entity_linking import ElasticEntityLinker
 from waka.nlp.entity_recognition import EnsembleNER
 from waka.nlp.kg import Entity
@@ -14,6 +14,7 @@ def main():
     el_pipeline = Pipeline[List[Entity]]()
     el_pipeline.add_processor(EnsembleNER)
     el_pipeline.add_processor(ElasticEntityLinker)
+    # el_pipeline.add_processor(EntitySentenceBert)
     el_pipeline.start()
     macro_prec, macro_rec, macro_f1 = [], [], []
 

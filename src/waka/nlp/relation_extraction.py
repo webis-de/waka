@@ -30,8 +30,8 @@ class RebelExtractor(RelationExtractor):
                                   model="Babelscape/rebel-large",
                                   tokenizer='Babelscape/rebel-large')
 
-    def process(self, text: str) -> List[Triple]:
-        super().process(text)
+    def process(self, text: str, in_data: str) -> List[Triple]:
+        super().process(text, in_data)
         extraction = self.extractor(text, return_tensors=True, return_text=True)
         token_ids = extraction[0]["generated_token_ids"]
         decoded_text = self.extractor.tokenizer.batch_decode([token_ids])[0]
@@ -127,8 +127,8 @@ class MRebelExtractor(RelationExtractor):
         #                           tokenizer='Babelscape/mrebel-large',
         #                           device="cuda")
 
-    def process(self, text: str) -> Optional[List[Entity | Triple]]:
-        super().process(text)
+    def process(self, text: str, in_data: str) -> Optional[List[Entity | Triple]]:
+        super().process(text, in_data)
 
         model_inputs = self.tokenizer(text, max_length=512, padding=True, truncation=True, return_tensors='pt')
         generated_tokens = self.model.generate(
@@ -230,7 +230,7 @@ class OpenIEExtractor(RelationExtractor):
         model_url = "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2020.02.27.tar.gz"
         self.predictor = Predictor.from_path(model_url)
 
-    def process(self, text: str) -> Optional[List[Triple]]:
+    def process(self, text: str, in_data: str) -> Optional[List[Triple]]:
         # prediction = self.predictor.predict(document=text)
 
         # document, clusters = prediction['document'], prediction['clusters']

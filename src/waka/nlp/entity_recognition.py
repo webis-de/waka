@@ -73,8 +73,8 @@ class SpacyNER(EntityRecognizer):
         super().__init__()
         self.nlp = spacy.load("en_core_web_sm")
 
-    def process(self, text: str) -> List[Entity]:
-        super().process(text)
+    def process(self, text: str, in_data: str) -> List[Entity]:
+        super().process(text, in_data)
         entities = []
         doc = self.nlp(text)
 
@@ -190,8 +190,8 @@ class StanzaNER(EntityRecognizer):
         self.decimal_types = {"PERCENT", "MONEY", "QUANTITY", "CARDINAL", "ORDINAL"}
         self.date_types = {"DATE", "TIME"}
 
-    def process(self, text: str) -> List[Entity]:
-        super().process(text)
+    def process(self, text: str, in_data: str) -> List[Entity]:
+        super().process(text, in_data)
         entities = []
         doc = self.nlp(text)
 
@@ -227,8 +227,8 @@ class SparkNLPNER(EntityRecognizer):
         self.decimal_types = {"PERCENT", "MONEY", "QUANTITY", "CARDINAL", "ORDINAL"}
         self.date_types = {"DATE", "TIME"}
 
-    def process(self, text: str) -> List[Entity]:
-        super().process(text)
+    def process(self, text: str, in_data: str) -> List[Entity]:
+        super().process(text, in_data)
         pipelines = [self.nlp_onto, self.nlp_dl]
 
         results = []
@@ -262,8 +262,8 @@ class FlairNER(EntityRecognizer):
         super().__init__()
         self.tagger = SequenceTagger.load("flair/ner-english")
 
-    def process(self, text: str) -> List[Entity]:
-        super().process(text)
+    def process(self, text: str, in_data: str) -> List[Entity]:
+        super().process(text, in_data)
         entities = []
 
         sentence = Sentence(text)
@@ -285,26 +285,18 @@ class EnsembleNER(EntityRecognizer):
 
     def __init__(self):
         super().__init__()
-        self.ner = [SparkNLPNER(), StanzaNER(), SpacyNER(), FlairNER()]
+        self.ner = [
+            # SparkNLPNER(),
+            StanzaNER(),
+            SpacyNER(),
+            FlairNER()
+        ]
 
-    def process(self, text: str) -> List[Entity]:
+    def process(self, text: str, in_data: str) -> List[Entity]:
         entities = set()
 
         for ner in self.ner:
-            entities = entities.union(ner.process(text))
-
-        # for entity in entities:
-        #     new_text = re.sub("^[^a-zA-Z0-9]+", "", entity.text)
-        #
-        #     diff = len(entity.text) - len(new_text)
-        #     entity.text = new_text
-        #     entity.start_idx += diff
-        #
-        #     new_text = re.sub("[^a-zA-Z0-9]+$", "", entity.text)
-        #
-        #     diff = len(entity.text) - len(new_text)
-        #     entity.text = new_text
-        #     entity.end_idx -= diff
+            entities = entities.union(ner.process(text, in_data))
 
         return list(entities)
 

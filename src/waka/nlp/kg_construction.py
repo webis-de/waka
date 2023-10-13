@@ -10,7 +10,7 @@ from waka.nlp.entity_recognition import EnsembleNER
 from waka.nlp.kg import Entity, Triple, KnowledgeGraph, LinkedEntity
 from waka.nlp.relation_extraction import MRebelExtractor
 from waka.nlp.relation_linking import ElasticRelationLinker
-from waka.nlp.semantics import BartMNLI, TripleScorer, EntityScorer
+from waka.nlp.semantics import TripleScorer, EntityScorer, WikidataFilter, EntitySentenceBert
 from waka.nlp.text_processor import Pipeline
 
 
@@ -68,7 +68,14 @@ class KGFactory:
             if self.triple_scorer is not None:
                 triple_candidates = self.triple_scorer.score(self.text, triple_candidates)
 
-            self.kg.triples.append(sorted(triple_candidates, key=lambda t: -t.score)[0])
+            try:
+                best_triple = sorted(triple_candidates, key=lambda t: -t.score)[0]
+                self.kg.triples.append(best_triple)
+
+                self.kg.entities.extend(self._find_mentions_for_entity(best_triple.subject))
+                self.kg.entities.extend(self._find_mentions_for_entity(best_triple.object))
+            except IndexError:
+                continue
 
         self.kg.entities = list(set(self.kg.entities))
         self.kg.triples = list(set(self.kg.triples))
@@ -98,38 +105,6 @@ class KGFactory:
 
         return entities_by_mention
 
-    def _get_entity_for_mention(self, mention: str, entities_by_mention: dict) -> Optional[LinkedEntity | Entity]:
-        if mention in entities_by_mention:
-            entity = entities_by_mention[mention][0]
-
-            for i in range(1, len(entities_by_mention[mention])):
-                if entities_by_mention[mention][i].url != entity.url:
-                    break
-
-                self.kg.entities.append(entities_by_mention[mention][i])
-
-            self.kg.entities.append(entity)
-            if entity in self.kg.entity_candidates:
-                self.kg.entity_candidates.remove(entity)
-
-            return entity
-        else:
-            for mention_key in entities_by_mention:
-                if mention in mention_key:
-                    entity = entities_by_mention[mention_key][0]
-                    for i in range(1, len(entities_by_mention[mention_key])):
-                        if entities_by_mention[mention_key][i].url != entity.url:
-                            break
-
-                        self.kg.entities.append(entities_by_mention[mention_key][i])
-
-                    self.kg.entities.append(entity)
-                    if entity in self.kg.entity_candidates:
-                        self.kg.entity_candidates.remove(entity)
-                    return entity
-
-        return None
-
     @staticmethod
     def _get_entities_for_mention(mention: str,
                                   entities_by_mention: Dict[str, List[Entity | LinkedEntity]]) \
@@ -145,6 +120,8 @@ class KGFactory:
 
         return entities
 
+    def _find_mentions_for_entity(self, entity: Entity | LinkedEntity):
+        return [x for x in self.entities if x.url == entity.url and x.text == entity.text]
 
 class KGConstructor:
 
@@ -160,14 +137,15 @@ class KGConstructor:
 
         self.el_pipeline.add_processor(self.er)
         self.el_pipeline.add_processor(self.el)
+        self.el_pipeline.add_processor(EntitySentenceBert)
 
         self.rl_pipeline = Pipeline[List[Triple]]()
         self.rl_pipeline.add_processor(self.re)
         self.rl_pipeline.add_processor(self.rl)
 
         # self.triple_scorer = SentenceBert()
-        self.triple_scorer = None
-        self.entity_scorer = BartMNLI()
+        self.triple_scorer = WikidataFilter()
+        self.entity_scorer = None
 
         try:
             self.el_pipeline.start()

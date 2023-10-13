@@ -17,35 +17,36 @@ class ElasticRelationLinker(RelationLinker):
         super().__init__()
         self.search_endpoint = "https://metareal-kb.web.webis.de/api/v1/kb/property/search"
 
-    def process(self, triples: List[Triple]) -> List[Triple]:
-        super().process(triples)
+    def process(self, text: str, triples: List[Triple]) -> List[Triple]:
+        super().process(text, triples)
         cache = {}
         headers = {"accept": "application/json"}
 
-        for triple in triples:
-            retrieved_properties = []
+        with requests.Session() as session:
+            for triple in triples:
+                retrieved_properties = []
 
-            if triple.predicate.text in cache:
-                retrieved_properties.extend(cache[triple.predicate.text])
-            else:
-                request_params = {"q": triple.predicate.text}
+                if triple.predicate.text in cache:
+                    retrieved_properties.extend(cache[triple.predicate.text])
+                else:
+                    request_params = {"q": triple.predicate.text}
 
-                response = requests.get(self.search_endpoint, params=request_params, headers=headers)
-                body = response.json()
+                    response = session.get(self.search_endpoint, params=request_params, headers=headers)
+                    body = response.json()
 
-                if body["status"] == "success":
-                    for p in body["data"]:
-                        retrieved_properties.append(p)
+                    if body["status"] == "success":
+                        for p in body["data"]:
+                            retrieved_properties.append(p)
 
-                    cache[triple.predicate.text] = sorted(retrieved_properties, key=lambda predicate: -predicate["score"])
+                        cache[triple.predicate.text] = sorted(retrieved_properties, key=lambda predicate: -predicate["score"])
 
-            if len(retrieved_properties) > 0:
-                selected = retrieved_properties[0]
-                triple.predicate.url = selected["id"]
-                triple.predicate.label = selected["label"]
-                triple.predicate.description = selected["description"]
+                if len(retrieved_properties) > 0:
+                    selected = retrieved_properties[0]
+                    triple.predicate.url = selected["id"]
+                    triple.predicate.label = selected["label"]
+                    triple.predicate.description = selected["description"]
 
-        return triples
+            return triples
 
 
 

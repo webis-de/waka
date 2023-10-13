@@ -2,7 +2,7 @@ import fileinput
 import json
 import os
 
-from evaluation.datasets.corpus_parser import CorpusParser
+from evaluation.corpora.corpus_parser import CorpusParser
 from waka.nlp.kg import KnowledgeGraph, Property, Triple, LinkedEntity
 
 
@@ -35,6 +35,20 @@ class RedFM(CorpusParser):
         entities = []
         triples = []
 
+        for entity in data["entities"]:
+            parsed_entity = LinkedEntity(
+                text=entity["surfaceform"].encode("utf-8").decode(),
+                url=f"http://www.wikidata.org/entity/{entity['uri']}",
+                start_idx=entity["boundaries"][0],
+                end_idx=entity["boundaries"][1],
+                label=None,
+                e_type=entity["type"].lower(),
+                score=None,
+                description=None
+            )
+
+            entities.append(parsed_entity)
+
         for relation in data["relations"]:
             subject = relation["subject"]
             subject_entity = LinkedEntity(
@@ -66,9 +80,6 @@ class RedFM(CorpusParser):
                 score=None,
                 description=None
             )
-
-            entities.append(subject_entity)
-            entities.append(object_entity)
 
             triples.append(Triple(subject_entity, predicate, object_entity, None))
 

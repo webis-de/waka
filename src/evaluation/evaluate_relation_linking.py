@@ -1,7 +1,7 @@
 import multiprocessing
 from typing import List
 
-from evaluation.datasets.red_fm import RedFM
+from evaluation.corpora.red_fm import RedFM
 from waka.nlp.kg import Property, Triple
 from waka.nlp.relation_extraction import MRebelExtractor
 from waka.nlp.relation_linking import ElasticRelationLinker

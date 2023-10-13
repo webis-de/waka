@@ -16,7 +16,7 @@ class TextProcessor(Generic[IN, OUT], metaclass=abc.ABCMeta):
         self.logger.info("Load...")
 
     @abc.abstractmethod
-    def process(self, in_data: IN) -> Optional[List[OUT]]:
+    def process(self, text: str, in_data: IN) -> Optional[List[OUT]]:
         self.logger.debug(f"Process \"{in_data}\"")
         pass
 
@@ -57,7 +57,7 @@ class Pipeline(Generic[OUT], Process):
             out_data = None
             for processor in self.instances:
                 start = time.time()
-                out_data = processor.process(in_data)
+                out_data = processor.process(text, in_data)
                 exec_time = time.time() - start
 
                 processor.logger.debug(f"In: {type(in_data)}({len(in_data)}) [{exec_time:.4f}s]")

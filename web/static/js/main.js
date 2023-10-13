@@ -83,6 +83,10 @@ function onKgReceive(responseText){
 
     textEditor.innerHTML = ""
     for(let entity of entities){
+        if (entity.start_idx < idx){
+            continue
+        }
+
         let plain = kg.text.substring(idx, entity.start_idx)
         if(plain !== ""){
             let textNode = document.createTextNode(plain)

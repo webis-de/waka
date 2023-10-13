@@ -1,13 +1,15 @@
 import abc
-from typing import List
+from typing import List, Optional
 
 import numpy as np
+import requests
 from numpy import ndarray, dtype
 from sentence_transformers.SentenceTransformer import SentenceTransformer
 from sentence_transformers.util import cos_sim
 from transformers import pipeline
 
 from waka.nlp.kg import Triple, Entity, LinkedEntity
+from waka.nlp.text_processor import TextProcessor
 
 
 class TripleScorer(metaclass=abc.ABCMeta):
@@ -48,7 +50,46 @@ class SentenceBert(TripleScorer):
         return triples
 
 
-class EntityScorer(metaclass=abc.ABCMeta):
+class WikidataFilter(TripleScorer):
+    SPARQL_ENDPOINT = \
+        "https://metareal-kb.web.webis.de/api/v1/kb/sparql?timeout=30000"
+    QUERY_TEMPLATE = \
+        "ASK FROM <https://www.wikidata.org/wiki/> {{ <{}> <{}> <{}> }}"
+
+    def score(self, text: str, triples: List[Triple]) -> List[Triple]:
+        return self.send_all(triples)
+
+    def send_all(self, triples: List[Triple]) -> List[Triple]:
+        results = []
+        result_triples = []
+        with requests.Session() as session:
+            for triple in triples:
+                results.append(self.send_request(session, triple))
+
+        # results = await asyncio.gather(*results, return_exceptions=True)
+
+        for result, triple in zip(results, triples):
+            if result:
+                result_triples.append(triple)
+
+        if len(result_triples) == 0:
+            return triples
+
+        return result_triples
+
+    def send_request(self, session: requests.Session, triple: Triple) -> bool:
+        query = WikidataFilter.QUERY_TEMPLATE.format(triple.subject.url, triple.predicate.url, triple.object.url)
+
+        response = session.post(WikidataFilter.SPARQL_ENDPOINT, data=query,
+                                headers={"Content-Type": "application/sparql-query"})
+
+        body = response.json()
+
+        if body["status"] == "success":
+            return "true" == body["data"]["results"][0][0]
+
+
+class EntityScorer(TextProcessor[List[Entity | LinkedEntity], List[Entity | LinkedEntity]], metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def score(self, text: str, entities: List[Entity | LinkedEntity]) -> List[Entity | LinkedEntity]:
         pass
@@ -56,6 +97,7 @@ class EntityScorer(metaclass=abc.ABCMeta):
 
 class BartMNLI(EntityScorer):
     def __init__(self):
+        super().__init__()
         self.classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli", device="cuda")
 
     def score(self, text: str, entities: List[Entity | LinkedEntity]) -> List[Entity | LinkedEntity]:
@@ -70,13 +112,21 @@ class BartMNLI(EntityScorer):
         return entities
 
 
-def main():
-    scorer = SentenceBert()
-    print(scorer.score(
-        "St Magnus-the-Martyr, City of London is church in City of London, UK",
-        "diocese is administrative division of the church to which the element belongs; use P5607 for other types of ecclesiastical territorial entities",
-        "Diocese of London is forms part of the Church of England's Province of Canterbury in England"))
+class EntitySentenceBert(EntityScorer):
 
+    def __init__(self):
+        super().__init__()
+        self.sentence_transformer = SentenceTransformer("all-distilroberta-v1", device="cuda")
 
-if __name__ == '__main__':
-    main()
+    def score(self, text: str, entities: List[Entity | LinkedEntity]) -> List[Entity | LinkedEntity]:
+        texts = [f"{e.label} is a {e.description}" for e in entities]
+        embeddings = self.sentence_transformer.encode([text, *texts],
+                                                      convert_to_tensor=True)
+
+        for i in range(1, len(embeddings)):
+            entities[i - 1].score *= cos_sim(embeddings[0], embeddings[i])[0][0].item()
+
+        return entities
+
+    def process(self, text: str, in_data: List[Entity | LinkedEntity]) -> Optional[List[Entity | LinkedEntity]]:
+        return self.score(text, in_data)

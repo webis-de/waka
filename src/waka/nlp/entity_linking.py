@@ -19,8 +19,8 @@ class ElasticEntityLinker(EntityLinker):
         self.search_endpoint = "https://metareal-kb.web.webis.de/api/v1/kb/entity/search"
         self.cache = LFUCache(maxsize=512)
 
-    def process(self, in_data: List[Entity]) -> List[LinkedEntity]:
-        super().process(in_data)
+    def process(self, text: str, in_data: List[Entity]) -> List[LinkedEntity]:
+        super().process(text, in_data)
         request_entities = []
         linked_entities = []
 
