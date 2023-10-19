@@ -95,7 +95,29 @@ class EntityScorer(TextProcessor[List[Entity | LinkedEntity], List[Entity | Link
         pass
 
 
-class BartMNLI(EntityScorer):
+class BartMNLI(TripleScorer):
+    def __init__(self):
+        super().__init__()
+        self.classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli", device="cuda")
+
+    def score(self, text: str, triples: List[Triple]) -> List[Triple]:
+        labels = {}
+        for t in triples:
+            label = f"{t.subject.label} {t.predicate.label} {t.object.label}"
+            if label not in labels:
+                labels[label] = []
+            labels[label].append(t)
+
+        if len(labels) > 0:
+            result = self.classifier(text, list(labels.keys()))
+
+            for label, score in zip(result["labels"], result["scores"]):
+                for triple in labels[label]:
+                    triple.score *= score
+
+        return triples
+
+class EntityBartMNLI(EntityScorer):
     def __init__(self):
         super().__init__()
         self.classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli", device="cuda")

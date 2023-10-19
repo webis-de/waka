@@ -10,7 +10,7 @@ from waka.nlp.entity_recognition import EnsembleNER
 from waka.nlp.kg import Entity, Triple, KnowledgeGraph, LinkedEntity
 from waka.nlp.relation_extraction import MRebelExtractor
 from waka.nlp.relation_linking import ElasticRelationLinker
-from waka.nlp.semantics import TripleScorer, EntityScorer, WikidataFilter, EntitySentenceBert
+from waka.nlp.semantics import TripleScorer, EntityScorer, WikidataFilter, EntitySentenceBert, BartMNLI
 from waka.nlp.text_processor import Pipeline
 
 
@@ -23,7 +23,7 @@ class KGFactory:
                  text: str,
                  triples: Optional[List[Triple]] = None,
                  entities: Optional[List[Entity]] = None,
-                 triple_scorer: Optional[TripleScorer] = None,
+                 triple_scorer: Optional[List[TripleScorer]] = None,
                  entity_scorer: Optional[EntityScorer] = None):
         self.text = text
 
@@ -66,7 +66,8 @@ class KGFactory:
                         Triple(subj, triple.predicate, obj, float(np.mean([subj.score, obj.score]))))
 
             if self.triple_scorer is not None:
-                triple_candidates = self.triple_scorer.score(self.text, triple_candidates)
+                for triple_scorer in self.triple_scorer:
+                    triple_candidates = triple_scorer.score(self.text, triple_candidates)
 
             try:
                 best_triple = sorted(triple_candidates, key=lambda t: -t.score)[0]
@@ -144,7 +145,7 @@ class KGConstructor:
         self.rl_pipeline.add_processor(self.rl)
 
         # self.triple_scorer = SentenceBert()
-        self.triple_scorer = WikidataFilter()
+        self.triple_scorer = [WikidataFilter(), BartMNLI()]
         self.entity_scorer = None
 
         try:

@@ -81,7 +81,7 @@ class ElasticEntityLinker(EntityLinker):
                             end_idx=entity.end_idx,
                             text=entity.text,
                             label=e["label"],
-                            score=e["score"],
+                            score=e["score"] / 305,
                             e_type=entity.e_type,
                             description=e["description"]))
 

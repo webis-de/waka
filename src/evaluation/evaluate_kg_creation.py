@@ -1,13 +1,13 @@
 import multiprocessing
 
-from evaluation.corpora.rebel import Rebel
+from evaluation.corpora.red_fm import RedFM
 from waka.nlp.kg import KnowledgeGraph
 from waka.nlp.kg_construction import KGConstructor
 
 
 def main():
     multiprocessing.set_start_method("spawn")
-    dataset = Rebel()
+    dataset = RedFM()
     kg_construct = KGConstructor()
     macro_prec, macro_rec, macro_f1 = [], [], []
     desired_triples = []
