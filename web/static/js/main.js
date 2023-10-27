@@ -1,8 +1,10 @@
 import {KgVis} from "./kg-vis.js";
+import mustache from "https://cdnjs.cloudflare.com/ajax/libs/mustache.js/4.2.0/mustache.js";
 
 window.addEventListener("DOMContentLoaded", main)
 
 let kgVis = null
+const entityCache = new Map()
 
 function main(){
     let kgButton = document.getElementById("create-kg-button")
@@ -13,6 +15,29 @@ function main(){
         let overlay = document.getElementById("overlay")
         overlay.style.display = "none"
     })
+
+    let overlay = document.getElementById("overlay")
+    overlay.addEventListener("click", function (e) {
+        let target = e.target
+        let containerElems = document.querySelectorAll(".overlay-entity-container ." + target.className)
+
+        if(containerElems.length > 0){
+            if(target.className !== "overlay-entity-container"){
+                target = containerElems[0].closest(".overlay-entity-container")
+            }
+        }
+
+        if(target.className === "overlay-entity-container"){
+            console.log(target)
+            let currentEntityId = document.getElementById("overlay-content").href
+            let clickedEntityId = target.getElementsByClassName("overlay-entity-link")[0].href
+
+            let newNode = KgVis.createNodeFromEntity(entityCache.get(clickedEntityId))
+            let oldNode = kgVis.getNodeById(currentEntityId)
+            oldNode.label = newNode.label
+            // kgVis.addNode(KgVis.createNodeFromEntity(entityCache.get(clickedEntityId)))
+        }
+    },false)
 
     addEventListener("keydown", function (e){
         if(e.key === "Escape"){
@@ -34,12 +59,10 @@ function main(){
                 annToolbox.style.top = (clientRect.top - 22) + "px"
                 annToolbox.style.left = clientRect.left + "px"
                 annToolbox.style.visibility = "visible"
-                console.log(container.textContent.substring(range.startOffset, range.endOffset))
             }
         } else{
             annToolbox.style.visibility = "hidden"
         }
-
     })
 }
 
@@ -76,7 +99,7 @@ function onKgReceive(responseText){
     console.log(kg)
 
     let entities =  Array.from(kg.entities)
-    entities.sort(function (a, b){return a.start_idx - b.start_idx})
+    entities.sort(function (a, b){return +(a.start_idx - b.start_idx) || -((a.end_idx - a.start_idx) - (b.end_idx - b.start_idx))})
     let textEditor = document.getElementById("text-editor")
 
     let idx = 0
@@ -102,6 +125,30 @@ function onKgReceive(responseText){
 
     kgVis = new KgVis(kg)
     kgVis.draw(document.getElementById("kg-vis"))
+}
+
+function onEntitySearchReceive(responseText){
+    let data = JSON.parse(responseText)["data"]
+
+    entityCache.clear()
+    for (let entity of data){
+        entityCache.set(entity.id, entity)
+    }
+
+    let entityResultContainer = document.getElementById("overlay-entity-result-container")
+    entityResultContainer.innerHTML = ""
+
+    fetch("/static/templates/entity-change.mustache")
+        .then((response) => response.text())
+        .then((template) => {
+            entityResultContainer.innerHTML = mustache.render(template, {"entities": data})
+        }).then(() => {
+            let entityId = document.getElementById("overlay-content").href
+            let radio = entityResultContainer.querySelectorAll(".overlay-entity-selection[value=\"" + entityId + "\"]")
+            if (radio.length > 0){
+                radio[0].checked = true
+            }
+        })
 }
 
 function createEntitySpan(entity){
@@ -151,7 +198,7 @@ export function createEntityDescription(entity){
     entityDescription.appendChild(description)
 
     let link = document.createElement("a")
-    link.href = entity.url
+    link.href = entity.url ? entity.url : entity.id
     link.target = "_blank"
     link.innerText = entity.url
     entityDescription.appendChild(link)
@@ -181,63 +228,7 @@ function drawEntityChangePanel(entitySpan){
     requestBackend(
         "GET", "https://metareal-kb.web.webis.de/api/v1/kb/entity/search",
         {"q": entityName}, null, null,
-        function (responseText) {
-            let data = JSON.parse(responseText)["data"]
-
-            for (let i in data){
-                let entityId = document.getElementById("overlay-content").href
-                let entityContainer = document.createElement("div")
-                entityContainer.className = "overlay-entity-container"
-                entityResultContainer.appendChild(entityContainer)
-
-                let entitySelection = document.createElement("input")
-                entitySelection.className = "overlay-entity-selection"
-                entitySelection.type = "radio"
-                entitySelection.name = "entity"
-                entitySelection.value = data[i]["id"]
-
-                if(entityId === data[i]["id"]){
-                    entitySelection.checked = true;
-                }
-                entitySelection.addEventListener("change", function(e){
-                    let radio = e.target
-                    let entityId = document.getElementById("overlay-content").href
-                    let entitySpans = document.querySelectorAll(".entity[href=\""+ entityId + "\"]")
-                    for (let entitySpan of entitySpans){
-                        console.log(entitySpan)
-                        entitySpan.setAttribute("href", radio.value)
-                        entitySpan.getElementsByClassName("entity-description")[0].innerText = radio.value
-                    }
-                })
-                entityContainer.appendChild(entitySelection)
-
-                let entity = document.createElement("div")
-                entity.className = "overlay-entity"
-                entityContainer.appendChild(entity)
-
-                let entityLabel = document.createElement("h2")
-                entityLabel.className = "overlay-entity-label"
-                entityLabel.innerText = data[i]["label"]
-                entity.appendChild(entityLabel)
-
-                let entityLink = document.createElement("a")
-                entityLink.className = "overlay-entity-link"
-                entityLink.href = data[i]["id"]
-                entityLink.innerText = data[i]["id"]
-                entityLink.target = "_blank"
-                entity.appendChild(entityLink)
-
-                let entityDescription = document.createElement("div")
-                entityDescription.className = "overlay-entity-description"
-                entityDescription.innerText = data[i]["description"]
-                entity.appendChild(entityDescription)
-
-                let entityFreq = document.createElement("div")
-                entityFreq.className = "overlay-entity-freq"
-                entityFreq.innerText = "Frequency: " + data[i]["frequency"]
-                entity.appendChild(entityFreq)
-            }
-        })
+        onEntitySearchReceive)
 }
 
 function requestBackend(method, url, params, header, data, callback){

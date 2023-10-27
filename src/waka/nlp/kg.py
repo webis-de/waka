@@ -139,13 +139,12 @@ class Property(GenericItem):
         for comp_triple in computed_triples:
             correct = False
             if comp_triple.predicate in desired_predicates:
-                for desired_triple in desired_triples:
-                    if desired_triple.predicate == comp_triple.predicate:
-                        if comp_triple.subject.text == desired_triple.subject.text and \
-                                comp_triple.object.text == desired_triple.object.text:
-                            tp += 1
-                            correct = True
-                            break
+                # for desired_triple in desired_triples:
+                #     if desired_triple.predicate == comp_triple.predicate:
+                #         if comp_triple.subject.text == desired_triple.subject.text and \
+                #                 comp_triple.object.text == desired_triple.object.text:
+                tp += 1
+                correct = True
 
             if not correct:
                 fp += 1
@@ -155,12 +154,12 @@ class Property(GenericItem):
         for desired_triple in desired_triples:
             if desired_triple.predicate not in comp_predicates:
                 fn += 1
-            else:
-                for comp_triple in computed_triples:
-                    if comp_triple.predicate == desired_triple.predicate:
-                        if comp_triple.subject.text != desired_triple.subject.text or \
-                                comp_triple.object.text != desired_triple.object.text:
-                            fn += 1
+            # else:
+                # for comp_triple in computed_triples:
+                #     if comp_triple.predicate == desired_triple.predicate:
+                #         if comp_triple.subject.text != desired_triple.subject.text or \
+                #                 comp_triple.object.text != desired_triple.object.text:
+                #             fn += 1
 
         try:
             prec = tp / (tp + fp)
@@ -254,4 +253,3 @@ class KnowledgeGraph:
             f1 = 0.0
 
         return {"precision": prec, "recall": recall, "f1": f1}
-

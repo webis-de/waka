@@ -4,7 +4,6 @@ from typing import List
 from evaluation.corpora.red_fm import RedFM
 from waka.nlp.kg import Property, Triple
 from waka.nlp.relation_extraction import MRebelExtractor
-from waka.nlp.relation_linking import ElasticRelationLinker
 from waka.nlp.text_processor import Pipeline
 
 
@@ -13,7 +12,7 @@ def main():
     dataset = RedFM()
     rl_pipeline = Pipeline[List[Triple]]()
     rl_pipeline.add_processor(MRebelExtractor)
-    rl_pipeline.add_processor(ElasticRelationLinker)
+    # rl_pipeline.add_processor(ElasticRelationLinker)
     rl_pipeline.start()
     macro_prec, macro_rec, macro_f1 = [], [], []
 
@@ -26,8 +25,8 @@ def main():
 
         triples = rl_pipeline.get()
 
-        # for t in kg.triples:
-        #     t.predicate.url = None
+        for t in kg.triples:
+            t.predicate.url = None
 
         result = Property.eval(kg.triples, triples)
         des_triples.extend(kg.triples)

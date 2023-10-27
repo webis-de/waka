@@ -6,7 +6,7 @@ import requests
 from numpy import ndarray, dtype
 from sentence_transformers.SentenceTransformer import SentenceTransformer
 from sentence_transformers.util import cos_sim
-from transformers import pipeline
+from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
 
 from waka.nlp.kg import Triple, Entity, LinkedEntity
 from waka.nlp.text_processor import TextProcessor
@@ -23,7 +23,7 @@ class SentenceBert(TripleScorer):
         self.sentence_transformer = SentenceTransformer("paraphrase-mpnet-base-v2", device="cuda")
 
     def _score(self, *texts: str) -> ndarray[float, dtype[float]]:
-        embeddings = self.sentence_transformer.encode(texts,
+        embeddings = self.sentence_transformer.encode(*texts,
                                                       convert_to_tensor=True)
 
         flat_sim_triples = np.zeros((len(texts) // 3, 3))
@@ -98,7 +98,9 @@ class EntityScorer(TextProcessor[List[Entity | LinkedEntity], List[Entity | Link
 class BartMNLI(TripleScorer):
     def __init__(self):
         super().__init__()
-        self.classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli", device="cuda")
+        self.nli_model = AutoModelForSequenceClassification.from_pretrained('facebook/bart-large-mnli')
+        self.tokenizer = AutoTokenizer.from_pretrained('facebook/bart-large-mnli')
+        self.classifier = pipeline("zero-shot-classification", model=self.nli_model, tokenizer=self.tokenizer, device="cuda")
 
     def score(self, text: str, triples: List[Triple]) -> List[Triple]:
         labels = {}

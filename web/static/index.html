@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="css/main.css" type="text/css">
     <link rel="icon" href="assets/favicon.svg">
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script type="text/javascript" src="https://requirejs.org/docs/release/2.3.5/minified/require.js"></script>
     <script type="module" src="js/main.js"></script>
 </head>
 <body>
@@ -40,11 +41,12 @@
                 <div id="text-editor-button-container">
                     <span id="nav-button-container">
                         <button id="create-kg-button">Create Graph</button>
+                        <div id="loading-ring" class="lds-ring hidden"><div></div><div></div><div></div><div></div></div>
                     </span>
 <!--                    <span id="ann-button-container">-->
 <!--                        <button id="add-entity-button" class="ann-button" disabled >+ Entity</button>-->
 <!--                    </span>-->
-                    <div id="loading-ring" class="lds-ring hidden"><div></div><div></div><div></div><div></div></div>
+
                 </div>
 
             </section>

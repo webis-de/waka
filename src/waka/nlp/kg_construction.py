@@ -145,7 +145,10 @@ class KGConstructor:
         self.rl_pipeline.add_processor(self.rl)
 
         # self.triple_scorer = SentenceBert()
-        self.triple_scorer = [WikidataFilter(), BartMNLI()]
+        self.triple_scorer = [
+            WikidataFilter(),
+            BartMNLI()
+        ]
         self.entity_scorer = None
 
         try:

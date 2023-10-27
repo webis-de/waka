@@ -93,7 +93,7 @@ export class KgVis{
 
     static createNodeFromEntity(entity) {
         return {
-            id: entity.url,
+            id: entity.url ? entity.url : entity.id,
             label: entity.label ? entity.label : entity.text,
             title: createEntityDescription(entity),
             ...KgVis.#defaultNodeOptions
