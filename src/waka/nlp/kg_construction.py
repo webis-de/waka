@@ -70,7 +70,8 @@ class KGFactory:
                     triple_candidates = triple_scorer.score(self.text, triple_candidates)
 
             try:
-                best_triple = sorted(triple_candidates, key=lambda t: -t.score)[0]
+                triple_ranking = sorted(triple_candidates, key=lambda t: -t.score)
+                best_triple = triple_ranking[0]
                 self.kg.triples.append(best_triple)
 
                 self.kg.entities.extend(self._find_mentions_for_entity(best_triple.subject))
@@ -112,12 +113,16 @@ class KGFactory:
             -> List[Entity | LinkedEntity]:
         entities = []
 
+        if len(mention) == 0:
+            return entities
+
         if mention in entities_by_mention:
             entities.extend(entities_by_mention[mention])
         else:
-            for mention_key in entities_by_mention:
+            for mention_key in sorted(entities_by_mention.keys(), key=lambda m: len(m), reverse=True):
                 if mention in mention_key:
                     entities.extend(entities_by_mention[mention_key])
+                    break
 
         return entities
 

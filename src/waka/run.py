@@ -9,14 +9,7 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
-    text = "The Bauhaus-Universität Weimar is a university located in Weimar, Germany, and specializes in the " \
-           "artistic and technical fields. Established in 1860 as the Great Ducal Saxon Art School, it gained " \
-           "collegiate status on 3 June 1910. In 1919 the school was renamed Bauhaus by its new director Walter " \
-           "Gropius and it received its present name in 1996. There are more than 4000 students enrolled, " \
-           "with the percentage of international students above the national average at around 27%. In 2010 the " \
-           "Bauhaus-Universität Weimar commemorated its 150th anniversary as an art school and college in Weimar. In " \
-           "2019 the university celebrated the centenary of the founding of the Bauhaus, together with partners all " \
-           "over the world."
+    text = "\"The Tell-Tale Heart\" is a short story by American writer Edgar Allan Poe, first published in 1843. It is related by an unnamed narrator who endeavors to convince the reader of the narrator's sanity while simultaneously describing a murder the narrator committed. The victim was an old man with a filmy pale blue \"vulture-eye\", as the narrator calls it. The narrator emphasizes the careful calculation of the murder, attempting the perfect crime, complete with dismembering the body in the bathtub and hiding it under the floorboards. Ultimately, the narrator's actions result in hearing a thumping sound, which the narrator interprets as the dead man's beating heart."
 
     kg_construct = KGConstructor()
     kg = kg_construct.construct(text)

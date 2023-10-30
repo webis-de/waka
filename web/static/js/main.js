@@ -4,9 +4,18 @@ import mustache from "https://cdnjs.cloudflare.com/ajax/libs/mustache.js/4.2.0/m
 window.addEventListener("DOMContentLoaded", main)
 
 let kgVis = null
+let kg = null
+
 const entityCache = new Map()
 
+const exampleNS = "https://example.org/"
+const wakaNS ="https://waka.webis.de/"
+const rdfsNS = "http://www.w3.org/2000/01/rdf-schema#"
+const schemaNS = "https://schema.org/"
+
 function main(){
+    $("#loading-icon").hide()
+
     let kgButton = document.getElementById("create-kg-button")
     kgButton.addEventListener("click", onKgButtonClicked)
 
@@ -17,27 +26,34 @@ function main(){
     })
 
     let overlay = document.getElementById("overlay")
-    overlay.addEventListener("click", function (e) {
-        let target = e.target
-        let containerElems = document.querySelectorAll(".overlay-entity-container ." + target.className)
+    overlay.addEventListener("click",  onClick)
 
-        if(containerElems.length > 0){
-            if(target.className !== "overlay-entity-container"){
-                target = containerElems[0].closest(".overlay-entity-container")
-            }
+    let saveButton = document.getElementById("save-button")
+    saveButton.addEventListener("click", function (e){
+        download("kg.nt", convertToRDF(kg))
+    })
+
+    let addEntityButton = document.getElementById("add-annotation-button")
+    addEntityButton.addEventListener("click", function (e){
+        let annToolbox = document.getElementById("ann-toolbox")
+        annToolbox.style.visibility = "hidden"
+
+        let textEditor = document.getElementById("text-editor")
+        let selection = window.getSelection()
+        if(selection.type === "Range"){
+            let range = selection.getRangeAt(0)
+            let container = range.commonAncestorContainer
+            let text = container.textContent.substring(range.startOffset, range.endOffset)
+
+            let entitySpan = createEntitySpan({text: text, url: exampleNS + encodeURIComponent(text)})
+
+            let currentHTML =  container.textContent
+
+            container.replaceWith(document.createTextNode(currentHTML.substring(0, range.startOffset)), entitySpan, document.createTextNode(currentHTML.substring(range.endOffset)))
+
+            selection.removeAllRanges()
         }
-
-        if(target.className === "overlay-entity-container"){
-            console.log(target)
-            let currentEntityId = document.getElementById("overlay-content").href
-            let clickedEntityId = target.getElementsByClassName("overlay-entity-link")[0].href
-
-            let newNode = KgVis.createNodeFromEntity(entityCache.get(clickedEntityId))
-            let oldNode = kgVis.getNodeById(currentEntityId)
-            oldNode.label = newNode.label
-            // kgVis.addNode(KgVis.createNodeFromEntity(entityCache.get(clickedEntityId)))
-        }
-    },false)
+    })
 
     addEventListener("keydown", function (e){
         if(e.key === "Escape"){
@@ -46,8 +62,7 @@ function main(){
         }
     })
 
-    let textEditor = document.getElementById("text-editor")
-    window.addEventListener("mouseup", function (e){
+    addEventListener("mouseup", function (e){
         let editor = document.getElementById("text-editor")
         let annToolbox = document.getElementById("ann-toolbox")
         let selection = window.getSelection()
@@ -56,7 +71,8 @@ function main(){
             let container = range.commonAncestorContainer
             if (editor.contains(container)){
                 let clientRect = range.getBoundingClientRect()
-                annToolbox.style.top = (clientRect.top - 22) + "px"
+
+                annToolbox.style.top = (clientRect.top - 32) + "px"
                 annToolbox.style.left = clientRect.left + "px"
                 annToolbox.style.visibility = "visible"
             }
@@ -64,15 +80,71 @@ function main(){
             annToolbox.style.visibility = "hidden"
         }
     })
+
+
+}
+
+function onClick(e) {
+    let target = e.target
+    let containerElems = document.querySelectorAll(".overlay-entity-container ." + target.className)
+
+    if(containerElems.length > 0){
+        if(target.className !== "overlay-entity-container"){
+            target = containerElems[0].closest(".overlay-entity-container")
+        }
+    }
+
+    if(target.className === "overlay-entity-container"){
+        let currentEntityId = document.getElementById("overlay-content").href
+        let selectedEntityId = target.getElementsByClassName("overlay-entity-link")[0].href
+
+        if(currentEntityId === selectedEntityId){
+            return
+        }
+
+        let checkmarks = document.querySelectorAll(".checkmark.visible")
+        for(let checkmark of checkmarks){
+            checkmark.classList.remove("visible")
+            checkmark.classList.add("hidden")
+        }
+
+        let newCheckmark = target.getElementsByClassName("checkmark")[0]
+        newCheckmark.classList.remove("hidden")
+        newCheckmark.classList.add("visible")
+
+        let selectedEntity = entityCache.get(selectedEntityId)
+        let newNode = KgVis.createNodeFromEntity(selectedEntity)
+        let oldNode = kgVis.getNodeById(currentEntityId)
+
+        kgVis.replaceNode(oldNode, newNode)
+
+        let entitySpans = document.querySelectorAll(".entity[href=\""+ oldNode.id + "\"]")
+        for (let entity of entitySpans){
+            entity.setAttribute("href", newNode.id)
+            entity.getElementsByClassName("entity-description")[0].remove()
+            entity.appendChild(createEntityDescription(selectedEntity))
+        }
+
+        document.getElementById("overlay-content").href = selectedEntityId
+
+        for(let triple of kg.triples){
+            if(triple.subject.url === currentEntityId){
+                triple.subject = selectedEntity
+            }
+
+            if(triple.object.url === currentEntityId){
+                triple.object = selectedEntity
+            }
+        }
+    }
 }
 
 function onKgButtonClicked(e){
-    let kgButton = e.target
-    kgButton.disabled = true
+    $("#create-kg-button").prop("disabled", true)
 
-    let loadingRing = document.getElementById("loading-ring")
-    loadingRing.classList.remove("hidden")
-    loadingRing.classList.add("visible")
+
+    $("#loading-icon").show()
+    $("#graph-icon").hide()
 
     let editor = document.getElementById("text-editor")
     // editor.setAttribute("contenteditable", false)
@@ -88,14 +160,11 @@ function onKgButtonClicked(e){
 }
 
 function onKgReceive(responseText){
-    let kgButton = document.getElementById("create-kg-button")
+    $("#loading-icon").hide()
+    $("#graph-icon").show()
+    $("#save-button").prop("disabled", false)
 
-
-    let loadingRing = document.getElementById("loading-ring")
-    loadingRing.classList.remove("visible")
-    loadingRing.classList.add("hidden")
-
-    let kg = JSON.parse(responseText)
+    kg = JSON.parse(responseText)
     console.log(kg)
 
     let entities =  Array.from(kg.entities)
@@ -125,6 +194,26 @@ function onKgReceive(responseText){
 
     kgVis = new KgVis(kg)
     kgVis.draw(document.getElementById("kg-vis"))
+
+    kgVis.getNetwork().on("hoverNode", function (e){
+        let entitySpans = document.querySelectorAll("[href=\""+ e.node + "\"]")
+
+        for (let entitySpan of entitySpans){
+            entitySpan.classList.add("highlight")
+        }
+    })
+
+    kgVis.getNetwork().on("blurNode", function (e){
+        let entitySpans = document.querySelectorAll("[href=\""+ e.node + "\"]")
+
+        for (let entitySpan of entitySpans){
+            entitySpan.classList.remove("highlight")
+        }
+    })
+
+    // kgVis.getNetwork().on("click", function (e){
+    //     // let entitySpans = document.querySelectorAll(".entity[href=\""+ e.node + "\"]")
+    // })
 }
 
 function onEntitySearchReceive(responseText){
@@ -132,6 +221,7 @@ function onEntitySearchReceive(responseText){
 
     entityCache.clear()
     for (let entity of data){
+        entity.url = entity.id
         entityCache.set(entity.id, entity)
     }
 
@@ -144,10 +234,15 @@ function onEntitySearchReceive(responseText){
             entityResultContainer.innerHTML = mustache.render(template, {"entities": data})
         }).then(() => {
             let entityId = document.getElementById("overlay-content").href
-            let radio = entityResultContainer.querySelectorAll(".overlay-entity-selection[value=\"" + entityId + "\"]")
-            if (radio.length > 0){
-                radio[0].checked = true
+            let entityContainer = entityResultContainer.querySelectorAll(".overlay-entity-container[data-id=\"" + entityId + "\"]")
+            if(entityContainer.length > 0){
+                let checkmark = entityContainer[0].getElementsByClassName("checkmark")
+                checkmark[0].classList.remove("hidden")
+                checkmark[0].classList.add("visible")
             }
+            // if (radio.length > 0){
+            //     radio[0].checked = true
+            // }
         })
 }
 
@@ -200,7 +295,7 @@ export function createEntityDescription(entity){
     let link = document.createElement("a")
     link.href = entity.url ? entity.url : entity.id
     link.target = "_blank"
-    link.innerText = entity.url
+    link.innerText = entity.url ? entity.url : entity.id
     entityDescription.appendChild(link)
 
     entityDescription.addEventListener("click", function (e){
@@ -381,4 +476,45 @@ function debugKG() {
             },
         ]
     }
+}
+
+function download(filename, text) {
+  let element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+  element.setAttribute('download', filename);
+
+  element.style.display = 'none';
+  document.body.appendChild(element);
+
+  element.click();
+
+  document.body.removeChild(element);
+}
+
+function convertToRDF(kg){
+    let entityMap = new Map()
+
+    let rdfString = ""
+    for(let triple of kg.triples){
+        if (triple.object.label === null){
+            rdfString += `<${triple.subject.url}> <${triple.predicate.url}> "${triple.object.url}" .\n`
+        }else{
+            rdfString += `<${triple.subject.url}> <${triple.predicate.url}> <${triple.object.url}> .\n`
+            if(!entityMap.has(triple.subject.url)){
+                entityMap.set(triple.subject.url, triple.subject)
+            }
+            if(!entityMap.has(triple.object.url)){
+                entityMap.set(triple.object.url, triple.object)
+            }
+        }
+    }
+
+    for(let entity of entityMap.values()){
+        rdfString += `<${entity.url}> <${rdfsNS}label> "${entity.label}"@en .\n`
+        rdfString += `<${entity.url}> <${schemaNS}description> "${entity.description}"@en .\n`
+    }
+
+    rdfString += `<${exampleNS}kg> <${wakaNS}sourceText> "${kg.text}"@en .`
+
+    return rdfString
 }

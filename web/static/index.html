@@ -5,8 +5,11 @@
     <title>WAKA</title>
     <link rel="stylesheet" href="css/main.css" type="text/css">
     <link rel="icon" href="assets/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <script type="text/javascript" src="https://requirejs.org/docs/release/2.3.5/minified/require.js"></script>
+    <script src="https://kit.fontawesome.com/484862e201.js" crossorigin="anonymous"></script>
     <script type="module" src="js/main.js"></script>
 </head>
 <body>
@@ -36,16 +39,23 @@
                     The Bauhaus-Universität Weimar is a university located in Weimar, Germany, and specializes in the artistic and technical fields. Established in 1860 as the Great Ducal Saxon Art School, it gained collegiate status on 3 June 1910. In 1919 the school was renamed Bauhaus by its new director Walter Gropius and it received its present name in 1996.
                 </div>
                 <div id="ann-toolbox">
+                    <button id="add-annotation-button">
+                        <i class="fa-solid fa-plus"></i>
                         Entity
+                    </button>
                 </div>
-                <div id="text-editor-button-container">
-                    <span id="nav-button-container">
-                        <button id="create-kg-button">Create Graph</button>
-                        <div id="loading-ring" class="lds-ring hidden"><div></div><div></div><div></div><div></div></div>
-                    </span>
-<!--                    <span id="ann-button-container">-->
-<!--                        <button id="add-entity-button" class="ann-button" disabled >+ Entity</button>-->
-<!--                    </span>-->
+                <div id="text-editor-toolbar">
+
+                    <button id="create-kg-button">
+                        <i id="graph-icon" class="fa-solid fa-diagram-project"></i>
+                        <i id="loading-icon" class="fa-solid fa-spinner fa-spin fa-lg" ></i>
+                        Graph
+                    </button>
+
+                    <button id="save-button" disabled>
+                        <i class="fa-solid fa-download"></i>
+                        RDF
+                    </button>
 
                 </div>
 
@@ -59,6 +69,7 @@
             </section>
         </div>
     </main>
+
 
     <footer class="nav-elements" id="site-footer">
         <div id="footer-content">

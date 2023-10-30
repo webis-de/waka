@@ -1,8 +1,10 @@
 import abc
 import asyncio
+import copy
 from typing import List
 
 import aiohttp
+import pycountry
 from cachetools import LFUCache
 
 from waka.nlp.kg import Entity, LinkedEntity
@@ -26,7 +28,7 @@ class ElasticEntityLinker(EntityLinker):
 
         for entity in in_data:
             if entity.text in self.cache:
-                linked_entities.extend(self.cache[entity.text])
+                linked_entities.extend(copy.deepcopy(self.cache[entity.text]))
             else:
                 if entity.url is not None:
                     linked_entities.append(LinkedEntity(
@@ -47,7 +49,7 @@ class ElasticEntityLinker(EntityLinker):
         if isinstance(results, List):
             for result in results:
                 if len(result) > 0:
-                    self.cache[result[0].text] = result
+                    self.cache[result[0].text] = copy.deepcopy(result)
 
                 linked_entities.extend(result)
         else:
@@ -67,7 +69,15 @@ class ElasticEntityLinker(EntityLinker):
 
     async def send_request(self, session: aiohttp.ClientSession, entity: Entity) -> List[LinkedEntity]:
         retrieved_entities = []
-        queries = [x.strip() for x in entity.text.split(",")]
+        queries = []
+        try:
+            queries.extend([c.name for c in pycountry.countries.search_fuzzy(entity.text)])
+            if len(queries) > 3:
+                queries.clear()
+        except LookupError:
+            pass
+
+        queries.extend([x.strip() for x in entity.text.split(",")])
 
         for query in queries:
             async with session.get(self.search_endpoint, params={"q": query}) as response:
@@ -85,4 +95,4 @@ class ElasticEntityLinker(EntityLinker):
                             e_type=entity.e_type,
                             description=e["description"]))
 
-            return retrieved_entities
+        return retrieved_entities

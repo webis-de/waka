@@ -299,9 +299,3 @@ class EnsembleNER(EntityRecognizer):
             entities = entities.union(ner.process(text, in_data))
 
         return list(entities)
-
-
-if __name__ == '__main__':
-    ner = SpacyNER()
-    print(ner.process(
-        "The La Paz 25 is an American trailerable sailboat that was designed by Lyle C. Hess as a motorsailer and first built in 1973."))

@@ -121,24 +121,6 @@ export class KgVis{
         this.#network.on("stabilizationIterationsDone", function (){
             _self.#network.setOptions({physics: {enabled: false}})
         })
-
-        // TODO: To main
-        this.#network.on("hoverNode", function (e){
-            let entitySpans = document.querySelectorAll("[href=\""+ e.node + "\"]")
-
-            for (let entitySpan of entitySpans){
-                entitySpan.classList.add("highlight")
-            }
-        })
-
-        // TODO: To main
-        this.#network.on("blurNode", function (e){
-            let entitySpans = document.querySelectorAll("[href=\""+ e.node + "\"]")
-
-            for (let entitySpan of entitySpans){
-                entitySpan.classList.remove("highlight")
-            }
-        })
     }
 
     getNodeById(id){
@@ -151,5 +133,23 @@ export class KgVis{
 
     addNode(node){
         this.#nodes.update(node)
+    }
+
+    replaceNode(oldNode, newNode){
+        this.#nodes.update(newNode)
+        this.#nodes.remove(oldNode.id)
+        let edgeUpdates =
+            this.#edges.map(function (e){
+                if(e.from === oldNode.id){
+                    e.from = newNode.id
+                }
+
+                if(e.to === oldNode.id){
+                    e.to = newNode.id
+                }
+
+                return e
+            })
+        this.#edges.updateOnly(edgeUpdates)
     }
 }

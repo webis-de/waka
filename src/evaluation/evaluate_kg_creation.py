@@ -18,6 +18,7 @@ def main():
         comp_kg = kg_construct.construct(kg.text)
 
         result = KnowledgeGraph.eval(kg.triples, comp_kg.triples)
+        print(result)
         desired_triples.extend(kg.triples)
         computed_triples.extend(comp_kg.triples)
 

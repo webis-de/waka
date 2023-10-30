@@ -61,7 +61,6 @@ class WikidataFilter(TripleScorer):
 
     def send_all(self, triples: List[Triple]) -> List[Triple]:
         results = []
-        result_triples = []
         with requests.Session() as session:
             for triple in triples:
                 results.append(self.send_request(session, triple))
@@ -70,12 +69,9 @@ class WikidataFilter(TripleScorer):
 
         for result, triple in zip(results, triples):
             if result:
-                result_triples.append(triple)
+                triple.score *= 3
 
-        if len(result_triples) == 0:
-            return triples
-
-        return result_triples
+        return triples
 
     def send_request(self, session: requests.Session, triple: Triple) -> bool:
         query = WikidataFilter.QUERY_TEMPLATE.format(triple.subject.url, triple.predicate.url, triple.object.url)
@@ -143,14 +139,19 @@ class EntitySentenceBert(EntityScorer):
         self.sentence_transformer = SentenceTransformer("all-distilroberta-v1", device="cuda")
 
     def score(self, text: str, entities: List[Entity | LinkedEntity]) -> List[Entity | LinkedEntity]:
-        texts = [f"{e.label} is a {e.description}" for e in entities]
+        score_entities = list(filter(lambda e:
+                                     hasattr(e, "label")
+                                     and (e.label is not None or e.description is not None),
+                                     entities))
+
+        texts = [f"{e.label} is a {e.description}" for e in score_entities]
         embeddings = self.sentence_transformer.encode([text, *texts],
                                                       convert_to_tensor=True)
 
         for i in range(1, len(embeddings)):
-            entities[i - 1].score *= cos_sim(embeddings[0], embeddings[i])[0][0].item()
+            score_entities[i - 1].score *= cos_sim(embeddings[0], embeddings[i])[0][0].item()
 
-        return entities
+        return list(sorted(filter(lambda e: e.score >= 0.05, entities), key=lambda e: e.score, reverse=True))
 
     def process(self, text: str, in_data: List[Entity | LinkedEntity]) -> Optional[List[Entity | LinkedEntity]]:
         return self.score(text, in_data)
