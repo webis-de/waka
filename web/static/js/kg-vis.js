@@ -5,7 +5,7 @@ export class KgVis{
         interaction: {
             hover: true,
             hoverConnectedEdges: false,
-            selectable: false,
+            selectable: true,
             selectConnectedEdges: false,
             navigationButtons: true,
             tooltipDelay: 0
@@ -72,16 +72,26 @@ export class KgVis{
         let nodesMap = new Map()
         let edges = []
 
-        for (let triple of kg.triples){
-            if(!nodesMap.has(triple.subject.url)){
-                nodesMap.set(triple.subject.url,
-                    KgVis.createNodeFromEntity(triple.subject))
-            }
+        for (let entity of kg.entities){
+             if(!nodesMap.has(entity.url)){
+                nodesMap.set(entity.url,
+                    KgVis.createNodeFromEntity(entity))
+             }else{
+                 let node = nodesMap.get(entity.url)
+                 node.of_triple[entity.text] = entity.of_triple
+             }
+        }
 
-            if(!nodesMap.has(triple.object.url)){
-                nodesMap.set(triple.object.url,
-                    KgVis.createNodeFromEntity(triple.object))
-            }
+        for (let triple of kg.triples){
+            // if(!nodesMap.has(triple.subject.url)){
+            //     nodesMap.set(triple.subject.url,
+            //         KgVis.createNodeFromEntity(triple.subject))
+            // }
+            //
+            // if(!nodesMap.has(triple.object.url)){
+            //     nodesMap.set(triple.object.url,
+            //         KgVis.createNodeFromEntity(triple.object))
+            // }
 
             let edge = KgVis.createEdgeFromTriple(triple)
             edges.push(edge)
@@ -92,16 +102,27 @@ export class KgVis{
     }
 
     static createNodeFromEntity(entity) {
+        let of_triple
+        if(Array.isArray(entity.of_triple)){
+            of_triple = {}
+            of_triple[entity.text] = entity.of_triple
+        } else{
+            of_triple = entity.of_triple
+        }
+
+
         return {
             id: entity.url ? entity.url : entity.id,
             label: entity.label ? entity.label : entity.text,
             title: createEntityDescription(entity),
+            of_triple: of_triple,
             ...KgVis.#defaultNodeOptions
         }
     }
 
     static createEdgeFromTriple(triple) {
         return {
+            id: triple.id_,
             from: triple.subject.url,
             to: triple.object.url,
             label: triple.predicate.text,
@@ -131,25 +152,40 @@ export class KgVis{
         return this.#network
     }
 
-    addNode(node){
+    updateNode(node){
         this.#nodes.update(node)
     }
 
-    replaceNode(oldNode, newNode){
+    replaceNode(text, oldNode, newNode){
+        if(oldNode !== null){
+            if(Object.keys(oldNode.of_triple).length === 1){
+                this.#nodes.remove(oldNode.id)
+            }/*else{
+                newNode.of_triple = {}
+                newNode.of_triple[text] = oldNode.of_triple[text]
+            }*/
+
+            let edgeUpdates =
+                this.#edges.map(function (e){
+                    if(oldNode.of_triple[text].includes(e.id)){
+                        if(e.from === oldNode.id){
+                            e.from = newNode.id
+                        }
+
+                        if(e.to === oldNode.id){
+                            e.to = newNode.id
+                        }
+                    }
+
+                    return e
+                })
+
+            this.#edges.update(edgeUpdates)
+        }
         this.#nodes.update(newNode)
-        this.#nodes.remove(oldNode.id)
-        let edgeUpdates =
-            this.#edges.map(function (e){
-                if(e.from === oldNode.id){
-                    e.from = newNode.id
-                }
+    }
 
-                if(e.to === oldNode.id){
-                    e.to = newNode.id
-                }
-
-                return e
-            })
-        this.#edges.updateOnly(edgeUpdates)
+    removeNode(node){
+        this.#nodes.remove(node.id)
     }
 }

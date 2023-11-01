@@ -14,12 +14,38 @@
 </head>
 <body>
 <div id="content-wrapper">
-    <div id="overlay">
+    <div id="overlay-entity" class="overlay">
         <div id="overlay-content">
-            <button id="overlay-close" class="close" type="button">&#x2715; Close</button>
-            <h1 id="overlay-entity-heading" class="overlay-entity-label"></h1>
+            <button id="entity-delete"><i class="fa-solid fa-trash-can fa-xl"></i></button>
+            <button id="overlay-close" class="close" type="button"><i class="fa-solid fa-x fa-xl"></i></button>
+            <h1 id="overlay-entity-heading" class="overlay-entity-label">
+                <span id="overlay-entity-text-span">
+                </span>
+                <i class="fa-solid fa-arrow-right fa-lg"></i>
+                <span id="overlay-entity-label"></span>
+            </h1>
+            <h2 id="overlay-entity-description"></h2>
 
+            <input id="overlay-entity-search-box" type="text" placeholder="Search for entities">
             <div id="overlay-entity-result-container">
+            </div>
+        </div>
+    </div>
+
+    <div id="overlay-property" class="overlay">
+        <div id="overlay-content-property">
+            <button id="property-delete"><i class="fa-solid fa-trash-can fa-xl"></i></button>
+            <button id="overlay-property-close" class="close" type="button"><i class="fa-solid fa-x fa-xl"></i></button>
+            <h1 id="overlay-property-heading" class="overlay-entity-label">
+                <span id="overlay-property-text-span">
+                </span>
+                <i class="fa-solid fa-arrow-right fa-lg"></i>
+                <span id="overlay-property-label"></span>
+            </h1>
+            <h2 id="overlay-property-description"></h2>
+
+            <input id="overlay-property-search-box" type="text" placeholder="Search for entities">
+            <div id="overlay-property-result-container">
             </div>
         </div>
     </div>
@@ -36,7 +62,7 @@
             <section id="text-editor-container" class="section-container">
                 <h1 class="section-heading">Text Editor</h1>
                 <div id="text-editor" contenteditable="true" role="textbox">
-                    The Bauhaus-Universität Weimar is a university located in Weimar, Germany, and specializes in the artistic and technical fields. Established in 1860 as the Great Ducal Saxon Art School, it gained collegiate status on 3 June 1910. In 1919 the school was renamed Bauhaus by its new director Walter Gropius and it received its present name in 1996.
+                    Dracula Untold is a 2014 American dark fantasy action film directed by Gary Shore in his feature film debut and written by Matt Sazama and Burk Sharpless. A reboot of the \"Dracula\" film series, the plot creates an origin story for the titular character, rather than using the storyline of Bram Stoker's 1897 novel. In this adaptation, Dracula is the monster alter ego of historical figure Vlad III \"the Impaler\" Drăculea. Luke Evans portrays the title character, with Sarah Gadon, Dominic Cooper, Art Parkinson, and Charles Dance cast in supporting roles. Principal photography began in Northern Ireland on August 5, 2013.
                 </div>
                 <div id="ann-toolbox">
                     <button id="add-annotation-button">

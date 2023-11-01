@@ -62,8 +62,9 @@ class KGFactory:
 
             for subj in sub_entities:
                 for obj in obj_entities:
-                    triple_candidates.append(
-                        Triple(subj, triple.predicate, obj, float(np.mean([subj.score, obj.score]))))
+                    if subj.url != obj.url:
+                        triple_candidates.append(
+                            Triple(subj, triple.predicate, obj, float(np.mean([subj.score, obj.score]))))
 
             if self.triple_scorer is not None:
                 for triple_scorer in self.triple_scorer:
@@ -74,12 +75,12 @@ class KGFactory:
                 best_triple = triple_ranking[0]
                 self.kg.triples.append(best_triple)
 
-                self.kg.entities.extend(self._find_mentions_for_entity(best_triple.subject))
-                self.kg.entities.extend(self._find_mentions_for_entity(best_triple.object))
+                self.kg.entities.extend(self._find_mentions_for_entity(best_triple.subject, best_triple))
+                self.kg.entities.extend(self._find_mentions_for_entity(best_triple.object, best_triple))
             except IndexError:
                 continue
 
-        self.kg.entities = list(set(self.kg.entities))
+        self.kg.entities = list(self.kg.entities)
         self.kg.triples = list(set(self.kg.triples))
 
         return self.kg
@@ -126,8 +127,13 @@ class KGFactory:
 
         return entities
 
-    def _find_mentions_for_entity(self, entity: Entity | LinkedEntity):
-        return [x for x in self.entities if x.url == entity.url and x.text == entity.text]
+    def _find_mentions_for_entity(self, entity: Entity | LinkedEntity, triple: Triple):
+        entities = []
+        for e in self.entities:
+            if e.url == entity.url and e.text == entity.text:
+                e.of_triple.append(triple.id_)
+                entities.append(e)
+        return entities
 
 class KGConstructor:
 

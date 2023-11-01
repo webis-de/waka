@@ -235,7 +235,7 @@ body{
     filter: grayscale(100%);
 }
 
-#overlay {
+.overlay {
     display: none;
     position: fixed;
     width: 100%;
@@ -250,12 +250,22 @@ body{
 
 #overlay-content .close {
     position: absolute;
-    top: 0;
-    right: 0;
+    top: 10px;
+    right: 10px;
+    background-color: transparent;
+    border: none;
+}
+
+#entity-delete {
+    position: absolute;
+    background-color: transparent;
+    top: 10px;
+    right: 40px;
+    border: none;
 }
 
 #overlay-content {
-    position: absolute;
+    position: relative;
     width: 60%;
     height: 50%;
     z-index: 3;
@@ -265,7 +275,7 @@ body{
 }
 
 #overlay-entity-result-container {
-    margin-top: 2em;
+    /*margin-top: 2em;*/
     border: black 1px solid;
     overflow: scroll;
     height: 80%;
@@ -295,6 +305,10 @@ body{
 .overlay-entity-link{
     padding-left: 2em;
     display: inline-block;
+}
+
+#overlay-entity-search-box{
+    font-size: 15pt;
 }
 
 #text-editor-toolbar {
@@ -358,4 +372,8 @@ button:not([disabled]):hover {
     flex-direction: column;
     justify-content: center;
     margin-right: 10px;
+}
+
+#overlay-entity-text-span {
+    font-style: italic;
 }

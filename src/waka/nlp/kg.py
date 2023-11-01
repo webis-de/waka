@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+from dataclasses import field
 from typing import Optional, List
 
 from databind.json import dumps
@@ -93,6 +94,7 @@ class LinkedEntity(Entity):
     label: Optional[str]
     score: Optional[float]
     description: Optional[str]
+    of_triple: List[str] = field(default_factory=list)
 
     def __hash__(self):
         return hash(f"{self.start_idx}:{self.end_idx}:{self.url}")
@@ -185,6 +187,10 @@ class Triple:
     predicate: Optional[Property]
     object: Optional[LinkedEntity | Entity]
     score: Optional[float]
+    id_: Optional[str] = None
+
+    def __post_init__(self):
+        self.id_ = str(self.__hash__())
 
     def to_json(self) -> str:
         return dumps(self, Triple)
