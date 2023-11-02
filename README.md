@@ -2,6 +2,8 @@
 
 Demo of the WAKA application to construct and author knowledge graphs from unstructured text. 
 
+![Example visualization](kg-visualization.png)
+
 ## Install
 
 ```shell
