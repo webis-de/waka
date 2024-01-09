@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import logging
 from typing import List, Optional, Dict
 
@@ -7,24 +8,23 @@ import numpy as np
 
 from waka.nlp.entity_linking import ElasticEntityLinker
 from waka.nlp.entity_recognition import EnsembleNER
-from waka.nlp.kg import Entity, Triple, KnowledgeGraph, LinkedEntity
+from waka.nlp.kg import EntityMention, Triple, KnowledgeGraph, UniqueEntity
 from waka.nlp.relation_extraction import MRebelExtractor
 from waka.nlp.relation_linking import ElasticRelationLinker
-from waka.nlp.semantics import TripleScorer, EntityScorer, WikidataFilter, EntitySentenceBert, BartMNLI
+from waka.nlp.semantics import TripleScorer, WikidataFilter, EntitySentenceBert, BartMNLI
 from waka.nlp.text_processor import Pipeline
 
 
 class KGFactory:
     triples: List[Triple]
-    entities: List[LinkedEntity | Entity]
+    unique_entities: List[UniqueEntity]
     kg: Optional[KnowledgeGraph]
 
     def __init__(self,
                  text: str,
                  triples: Optional[List[Triple]] = None,
-                 entities: Optional[List[Entity]] = None,
-                 triple_scorer: Optional[List[TripleScorer]] = None,
-                 entity_scorer: Optional[EntityScorer] = None):
+                 entities: Optional[List[UniqueEntity]] = None,
+                 triple_scorer: Optional[List[TripleScorer]] = None):
         self.text = text
 
         if triples is not None:
@@ -33,26 +33,27 @@ class KGFactory:
             self.triples = []
 
         if entities is not None:
-            self.entities = entities
+            self.unique_entities = entities
         else:
-            self.entities = []
+            self.unique_entities = []
 
         self.kg = None
 
         self.triple_scorer = triple_scorer
-        self.entity_scorer = entity_scorer
 
     def add_triple(self, triple: Triple) -> KGFactory:
         self.triples.append(triple)
         return self
 
-    def add_entity(self, entity: Entity) -> KGFactory:
-        self.entities.append(entity)
+    def add_entity(self, entity: UniqueEntity) -> KGFactory:
+        self.unique_entities.append(entity)
         return self
 
     def build(self) -> KnowledgeGraph:
         self.kg = KnowledgeGraph(text=self.text, triples=[], entities=[], entity_candidates=[])
         entities_by_mention = self._construct_entity_by_mention_index()
+
+        triple_sets = []
 
         for triple in self.triples:
             triple_candidates = []
@@ -63,20 +64,34 @@ class KGFactory:
             for subj in sub_entities:
                 for obj in obj_entities:
                     if subj.url != obj.url:
-                        triple_candidates.append(
-                            Triple(subj, triple.predicate, obj, float(np.mean([subj.score, obj.score]))))
+                        triple_candidate = Triple(
+                            subject=subj,
+                            predicate=triple.predicate,
+                            object=obj,
+                            score=float(np.mean([subj.score, obj.score])))
 
-            if self.triple_scorer is not None:
-                for triple_scorer in self.triple_scorer:
-                    triple_candidates = triple_scorer.score(self.text, triple_candidates)
+                        if triple_candidate.score >= 0.1:
+                            triple_candidates.append(triple_candidate)
 
+            triple_sets.append(list(sorted(triple_candidates, key=lambda t: -t.score)))
+
+        if self.triple_scorer is not None:
+            triple_candidates = []
+            for triple_set in triple_sets:
+                if len(triple_set) > 10:
+                    triple_set = triple_set[:10]
+
+                triple_candidates.extend(triple_set)
+
+            for triple_scorer in self.triple_scorer:
+                triple_candidates = triple_scorer.score(self.text, triple_candidates)
+
+        for triple_set in triple_sets:
             try:
-                triple_ranking = sorted(triple_candidates, key=lambda t: -t.score)
+                triple_ranking = sorted(triple_set, key=lambda t: -t.score)
                 best_triple = triple_ranking[0]
-                self.kg.triples.append(best_triple)
-
-                self.kg.entities.extend(self._find_mentions_for_entity(best_triple.subject, best_triple))
-                self.kg.entities.extend(self._find_mentions_for_entity(best_triple.object, best_triple))
+                if best_triple.score >= 0.1:
+                    self.kg.triples.append(best_triple)
             except IndexError:
                 continue
 
@@ -85,33 +100,28 @@ class KGFactory:
 
         return self.kg
 
-    def _construct_entity_by_mention_index(self) -> Dict[str, List[Entity | LinkedEntity]]:
+    def _construct_entity_by_mention_index(self) -> Dict[str, List[UniqueEntity]]:
         entities_by_mention = {}
-        urls_by_mention = {}
 
-        for entity in self.entities:
-            if entity.text not in entities_by_mention:
-                entities_by_mention[entity.text] = []
-            if entity.text not in urls_by_mention:
-                urls_by_mention[entity.text] = set()
+        for entity in self.unique_entities:
+            for mention in entity.mentions:
+                if mention.text not in entities_by_mention:
+                    entities_by_mention[mention.text] = []
 
-            if entity.url in urls_by_mention[entity.text]:
-                continue
+                if entity not in entities_by_mention[mention.text]:
+                    entity_copy = copy.deepcopy(entity)
+                    entity_copy.score = mention.score
+                    entities_by_mention[mention.text].append(entity_copy)
 
-            urls_by_mention[entity.text].add(entity.url)
-            entities_by_mention[entity.text].append(entity)
-
-        if self.entity_scorer is not None:
-            for mention, entity in entities_by_mention.items():
-                entities_by_mention[mention] = self.entity_scorer.score(self.text, entities_by_mention[mention])
-                entities_by_mention[mention] = sorted(entities_by_mention[mention], key=lambda e: -e.score)
+        for mention, entity in entities_by_mention.items():
+            entities_by_mention[mention] = sorted(entities_by_mention[mention], key=lambda e: -e.score)
 
         return entities_by_mention
 
     @staticmethod
     def _get_entities_for_mention(mention: str,
-                                  entities_by_mention: Dict[str, List[Entity | LinkedEntity]]) \
-            -> List[Entity | LinkedEntity]:
+                                  entities_by_mention: Dict[str, List[UniqueEntity]]) \
+            -> List[UniqueEntity]:
         entities = []
 
         if len(mention) == 0:
@@ -127,17 +137,11 @@ class KGFactory:
 
         return entities
 
-    def _find_mentions_for_entity(self, entity: Entity | LinkedEntity, triple: Triple):
-        entities = []
-        for e in self.entities:
-            if e.url == entity.url and e.text == entity.text:
-                e.of_triple.append(triple.id_)
-                entities.append(e)
-        return entities
 
 class KGConstructor:
 
-    def __init__(self):
+    def __init__(self, scorer=None):
+        logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
         self.logger = logging.getLogger(KGConstructor.__name__)
         self.logger.setLevel(logging.DEBUG)
         self.er = EnsembleNER
@@ -145,7 +149,7 @@ class KGConstructor:
         self.re = MRebelExtractor
         self.rl = ElasticRelationLinker
 
-        self.el_pipeline = Pipeline[List[Entity]]()
+        self.el_pipeline = Pipeline[List[EntityMention]]()
 
         self.el_pipeline.add_processor(self.er)
         self.el_pipeline.add_processor(self.el)
@@ -155,12 +159,13 @@ class KGConstructor:
         self.rl_pipeline.add_processor(self.re)
         self.rl_pipeline.add_processor(self.rl)
 
-        # self.triple_scorer = SentenceBert()
-        self.triple_scorer = [
-            WikidataFilter(),
-            BartMNLI()
-        ]
-        self.entity_scorer = None
+        if scorer is None:
+            self.triple_scorer = [
+                WikidataFilter(),
+                BartMNLI()
+            ]
+        else:
+            self.triple_scorer = [x() for x in scorer]
 
         try:
             self.el_pipeline.start()
@@ -179,7 +184,7 @@ class KGConstructor:
         self.logger.debug(f"Found entities: {entities}")
         self.logger.debug(f"Found triples: {triples}")
 
-        kg_factory = KGFactory(text, triples, entities, self.triple_scorer, self.entity_scorer)
+        kg_factory = KGFactory(text, triples, entities, self.triple_scorer)
         kg = kg_factory.build()
         self.logger.debug(f"Constructed graph: {kg.to_json()}")
 

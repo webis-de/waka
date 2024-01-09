@@ -15,7 +15,7 @@ from flair.data import Sentence
 from flair.models import SequenceTagger
 from sparknlp.pretrained import PretrainedPipeline
 
-from waka.nlp.kg import Entity
+from waka.nlp.kg import EntityMention
 from waka.nlp.text_processor import TextProcessor
 
 
@@ -73,13 +73,13 @@ class SpacyNER(EntityRecognizer):
         super().__init__()
         self.nlp = spacy.load("en_core_web_sm")
 
-    def process(self, text: str, in_data: str) -> List[Entity]:
+    def process(self, text: str, in_data: str) -> List[EntityMention]:
         super().process(text, in_data)
         entities = []
         doc = self.nlp(text)
 
         self._add_nouns(text, doc, entities)
-        self._add_noun_phrases(doc, entities)
+        # self._add_noun_phrases(doc, entities)
 
         for entity in doc.ents:
             url = None
@@ -88,7 +88,7 @@ class SpacyNER(EntityRecognizer):
             elif entity.label_ in self.date_types:
                 url = self.parse_datetime(entity.text)
 
-            entities.append(Entity(
+            entities.append(EntityMention(
                 url=url,
                 start_idx=entity.start_char,
                 end_idx=entity.end_char,
@@ -110,7 +110,7 @@ class SpacyNER(EntityRecognizer):
                 if last_token == token.pos_:
                     end_idx = token.idx + len(token.lemma_)
 
-                    entities.append(Entity(
+                    entities.append(EntityMention(
                         url=None,
                         start_idx=start_idx,
                         end_idx=end_idx,
@@ -118,7 +118,7 @@ class SpacyNER(EntityRecognizer):
                         e_type=token.pos_,
                     ))
                 elif start_idx is not None and end_idx is not None:
-                    entities.append(Entity(
+                    entities.append(EntityMention(
                         url=None,
                         start_idx=start_idx,
                         end_idx=end_idx,
@@ -134,7 +134,7 @@ class SpacyNER(EntityRecognizer):
                 if end_idx is None:
                     end_idx = token.idx + len(token.lemma_)
 
-                entities.append(Entity(
+                entities.append(EntityMention(
                     url=None,
                     start_idx=token.idx,
                     end_idx=token.idx + len(token.lemma_),
@@ -146,7 +146,7 @@ class SpacyNER(EntityRecognizer):
                 if (last_token in tags
                         and start_idx is not None
                         and end_idx is not None):
-                    entities.append(Entity(
+                    entities.append(EntityMention(
                         url=None,
                         start_idx=start_idx,
                         end_idx=end_idx,
@@ -162,7 +162,7 @@ class SpacyNER(EntityRecognizer):
         if (last_token in tags
                 and start_idx is not None
                 and end_idx is not None):
-            entities.append(Entity(
+            entities.append(EntityMention(
                 url=None,
                 start_idx=start_idx,
                 end_idx=end_idx,
@@ -173,7 +173,7 @@ class SpacyNER(EntityRecognizer):
     @staticmethod
     def _add_noun_phrases(doc, entities):
         for chunk in doc.noun_chunks:
-            entities.append(Entity(
+            entities.append(EntityMention(
                 url=None,
                 start_idx=chunk.start_char,
                 end_idx=chunk.end_char,
@@ -186,14 +186,61 @@ class StanzaNER(EntityRecognizer):
 
     def __init__(self):
         super().__init__()
-        self.nlp = stanza.Pipeline(lang="en", processors="tokenize,mwt,ner")
+        self.nlp = stanza.Pipeline(lang="en", processors="tokenize,mwt,pos,ner,constituency")
         self.decimal_types = {"PERCENT", "MONEY", "QUANTITY", "CARDINAL", "ORDINAL"}
         self.date_types = {"DATE", "TIME"}
 
-    def process(self, text: str, in_data: str) -> List[Entity]:
+    def extract_noun_phrases(self, sentence, constituency):
+        tree_queue = []
+        phrase_list = []
+
+        noun_phrases = []
+        word_index = {w.id: w for w in sentence.words}
+
+        for child in constituency.children:
+            tree_queue.append(child)
+
+        word_id = 0
+
+        parent_label = None
+        while len(tree_queue) > 0:
+            constituency = tree_queue.pop(0)
+
+            if constituency is None:
+                noun_phrases.append(phrase_list.pop(0))
+                parent_label = None
+                continue
+
+            if len(constituency.children) == 0:
+                word_id += 1
+
+                if len(phrase_list) > 0 and parent_label != "DT":
+                    for e in phrase_list:
+                        if e.text == "":
+                            e.start_idx = word_index[word_id].start_char
+
+                        e.text += " " + constituency.label
+                        e.text = e.text.strip()
+                        e.end_idx = word_index[word_id].end_char
+
+            if constituency.label == "NP":
+                phrase_list.insert(0, EntityMention(text="", start_idx=None, end_idx=None, url=None, e_type="NP"))
+                tree_queue.insert(0, None)
+
+            for child in reversed(constituency.children):
+                tree_queue.insert(0, child)
+
+            parent_label = constituency.label
+
+        return noun_phrases
+
+    def process(self, text: str, in_data: str) -> List[EntityMention]:
         super().process(text, in_data)
         entities = []
         doc = self.nlp(text)
+
+        for sent in doc.sentences:
+            entities.extend(self.extract_noun_phrases(sent, sent.constituency))
 
         for entity in doc.ents:
             url = None
@@ -202,7 +249,7 @@ class StanzaNER(EntityRecognizer):
             elif entity.type in self.date_types:
                 url = self.parse_datetime(entity.text)
 
-            entities.append(Entity(
+            entities.append(EntityMention(
                 url=url,
                 start_idx=entity.start_char,
                 end_idx=entity.end_char,
@@ -227,7 +274,7 @@ class SparkNLPNER(EntityRecognizer):
         self.decimal_types = {"PERCENT", "MONEY", "QUANTITY", "CARDINAL", "ORDINAL"}
         self.date_types = {"DATE", "TIME"}
 
-    def process(self, text: str, in_data: str) -> List[Entity]:
+    def process(self, text: str, in_data: str) -> List[EntityMention]:
         super().process(text, in_data)
         pipelines = [self.nlp_onto, self.nlp_dl]
 
@@ -246,7 +293,7 @@ class SparkNLPNER(EntityRecognizer):
                 elif entity_type in self.date_types:
                     url = self.parse_datetime(annotation.result)
 
-                entities.append(Entity(
+                entities.append(EntityMention(
                     url=url,
                     start_idx=annotation.begin,
                     end_idx=annotation.end + 1,
@@ -262,7 +309,7 @@ class FlairNER(EntityRecognizer):
         super().__init__()
         self.tagger = SequenceTagger.load("flair/ner-english")
 
-    def process(self, text: str, in_data: str) -> List[Entity]:
+    def process(self, text: str, in_data: str) -> List[EntityMention]:
         super().process(text, in_data)
         entities = []
 
@@ -270,7 +317,7 @@ class FlairNER(EntityRecognizer):
         self.tagger.predict(sentence)
 
         for entity in sentence.get_spans("ner"):
-            entities.append(Entity(
+            entities.append(EntityMention(
                 url=None,
                 start_idx=entity.start_position,
                 end_idx=entity.end_position,
@@ -292,7 +339,7 @@ class EnsembleNER(EntityRecognizer):
             FlairNER()
         ]
 
-    def process(self, text: str, in_data: str) -> List[Entity]:
+    def process(self, text: str, in_data: str) -> List[EntityMention]:
         entities = set()
 
         for ner in self.ner:

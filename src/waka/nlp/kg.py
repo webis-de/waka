@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import abc
-from dataclasses import field
 from typing import Optional, List
 
 from databind.json import dumps
@@ -27,7 +26,7 @@ class Resource(GenericItem):
 
 
 @dataclass(kw_only=True)
-class Entity(Resource):
+class EntityMention(Resource):
     start_idx: Optional[int]
     end_idx: Optional[int]
     e_type: Optional[str]
@@ -37,8 +36,8 @@ class Entity(Resource):
 
     def __eq__(self, other):
         if isinstance(other, LinkedEntity):
-            return self.__hash__() == Entity.__hash__(other)
-        elif isinstance(other, Entity):
+            return self.__hash__() == EntityMention.__hash__(other)
+        elif isinstance(other, EntityMention):
             return self.__hash__() == other.__hash__()
 
         return False
@@ -47,12 +46,12 @@ class Entity(Resource):
         return not self.__eq__(other)
 
     @staticmethod
-    def from_resource(resource: Resource) -> Entity:
-        return Entity(url=resource.url, start_idx=resource.start_idx, end_idx=resource.end_idx,
-                      text=resource.text, e_type=None)
+    def from_resource(resource: Resource) -> EntityMention:
+        return EntityMention(url=resource.url, start_idx=resource.start_idx, end_idx=resource.end_idx,
+                             text=resource.text, e_type=None)
 
     @staticmethod
-    def eval(desired: List[Entity], computed: List[Entity]) -> dict:
+    def eval(desired: List[EntityMention], computed: List[EntityMention]) -> dict:
         tp = 0
         fp = 0
         for comp_entity in computed:
@@ -90,11 +89,10 @@ class Entity(Resource):
 
 
 @dataclass(kw_only=True)
-class LinkedEntity(Entity):
+class LinkedEntity(EntityMention):
     label: Optional[str]
-    score: Optional[float]
     description: Optional[str]
-    of_triple: List[str] = field(default_factory=list)
+    score: Optional[float]
 
     def __hash__(self):
         return hash(f"{self.start_idx}:{self.end_idx}:{self.url}")
@@ -102,8 +100,8 @@ class LinkedEntity(Entity):
     def __eq__(self, other):
         if isinstance(other, LinkedEntity):
             return self.__hash__() == other.__hash__()
-        elif isinstance(other, Entity):
-            return Entity.__hash__(self) == other.__hash__()
+        elif isinstance(other, EntityMention):
+            return EntityMention.__hash__(self) == other.__hash__()
 
         return False
 
@@ -111,9 +109,24 @@ class LinkedEntity(Entity):
         return not self.__eq__(other)
 
     @staticmethod
-    def from_resource(resource: Resource) -> Entity:
+    def from_resource(resource: Resource) -> EntityMention:
         return LinkedEntity(url=resource.url, start_idx=resource.start_idx, end_idx=resource.end_idx,
                             text=resource.text, label=None, e_type=None, score=None, description=None)
+
+
+@dataclass(kw_only=True)
+class UniqueEntity:
+    url: Optional[str]
+    label: Optional[str]
+    description: Optional[str]
+    score: Optional[float]
+    mentions: List[LinkedEntity]
+
+    def __hash__(self):
+        return hash(self.url)
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
 
 @dataclass(kw_only=True)
@@ -157,11 +170,11 @@ class Property(GenericItem):
             if desired_triple.predicate not in comp_predicates:
                 fn += 1
             # else:
-                # for comp_triple in computed_triples:
-                #     if comp_triple.predicate == desired_triple.predicate:
-                #         if comp_triple.subject.text != desired_triple.subject.text or \
-                #                 comp_triple.object.text != desired_triple.object.text:
-                #             fn += 1
+            # for comp_triple in computed_triples:
+            #     if comp_triple.predicate == desired_triple.predicate:
+            #         if comp_triple.subject.text != desired_triple.subject.text or \
+            #                 comp_triple.object.text != desired_triple.object.text:
+            #             fn += 1
 
         try:
             prec = tp / (tp + fp)
@@ -183,9 +196,9 @@ class Property(GenericItem):
 
 @dataclass
 class Triple:
-    subject: Optional[LinkedEntity | Entity]
+    subject: Optional[UniqueEntity | EntityMention]
     predicate: Optional[Property]
-    object: Optional[LinkedEntity | Entity]
+    object: Optional[UniqueEntity | EntityMention]
     score: Optional[float]
     id_: Optional[str] = None
 
@@ -212,8 +225,8 @@ class Triple:
 class KnowledgeGraph:
     text: Optional[str]
     triples: List[Triple]
-    entities: List[LinkedEntity | Entity]
-    entity_candidates: List[LinkedEntity | Entity]
+    entities: List[LinkedEntity | EntityMention]
+    entity_candidates: List[LinkedEntity | EntityMention]
 
     def __str__(self) -> str:
         return self.to_rdf()

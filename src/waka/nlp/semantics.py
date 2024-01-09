@@ -1,14 +1,15 @@
 import abc
-from typing import List, Optional
+from typing import List
 
 import numpy as np
 import requests
+from nltk.tokenize import PunktSentenceTokenizer
 from numpy import ndarray, dtype
 from sentence_transformers.SentenceTransformer import SentenceTransformer
 from sentence_transformers.util import cos_sim
 from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
 
-from waka.nlp.kg import Triple, Entity, LinkedEntity
+from waka.nlp.kg import Triple, LinkedEntity, UniqueEntity
 from waka.nlp.text_processor import TextProcessor
 
 
@@ -85,10 +86,39 @@ class WikidataFilter(TripleScorer):
             return "true" == body["data"]["results"][0][0]
 
 
-class EntityScorer(TextProcessor[List[Entity | LinkedEntity], List[Entity | LinkedEntity]], metaclass=abc.ABCMeta):
+class EntityScorer(TextProcessor[List[LinkedEntity], List[UniqueEntity]], metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def score(self, text: str, entities: List[Entity | LinkedEntity]) -> List[Entity | LinkedEntity]:
+    def score(self, text: str, entities: List[LinkedEntity]) -> List[LinkedEntity]:
         pass
+
+    def process(self, text: str, entities: List[LinkedEntity]) -> List[UniqueEntity]:
+        return self.get_unique_entities(self.score(text, entities))
+
+    @staticmethod
+    def get_unique_entities(entities: List[LinkedEntity]) -> List[UniqueEntity]:
+        url_mention_cluster = {}
+        mention_clusters = []
+
+        for entity in entities:
+            if entity.url not in url_mention_cluster:
+                url_mention_cluster[entity.url] = set()
+
+            url_mention_cluster[entity.url].add(entity)
+
+        for url, cluster in url_mention_cluster.items():
+            if len(cluster) > 0:
+                sorted_cluster = sorted(cluster, key=lambda e: e.score, reverse=True)
+                first = next(iter(sorted_cluster))
+
+                mention_clusters.append(UniqueEntity(
+                    url=url,
+                    label=first.label,
+                    description=first.description,
+                    score=first.score,
+                    mentions=list(sorted_cluster)
+                ))
+
+        return mention_clusters
 
 
 class BartMNLI(TripleScorer):
@@ -96,18 +126,23 @@ class BartMNLI(TripleScorer):
         super().__init__()
         self.nli_model = AutoModelForSequenceClassification.from_pretrained('facebook/bart-large-mnli')
         self.tokenizer = AutoTokenizer.from_pretrained('facebook/bart-large-mnli')
-        self.classifier = pipeline("zero-shot-classification", model=self.nli_model, tokenizer=self.tokenizer, device="cuda")
+        self.classifier = pipeline("zero-shot-classification", model=self.nli_model, tokenizer=self.tokenizer,
+                                   device="cuda")
 
     def score(self, text: str, triples: List[Triple]) -> List[Triple]:
         labels = {}
         for t in triples:
-            label = f"{t.subject.label} {t.predicate.label} {t.object.label}"
+            if t.object.label is not None:
+                label = f"{t.subject.label} ({t.subject.description}) {t.predicate.label} {t.object.label} ({t.object.description})"
+            else:
+                label = f"{t.subject.label} ({t.subject.description}) {t.predicate.label} {t.object.url}"
+
             if label not in labels:
                 labels[label] = []
             labels[label].append(t)
 
         if len(labels) > 0:
-            result = self.classifier(text, list(labels.keys()))
+            result = self.classifier(text, list(labels.keys()),  multi_label=True)
 
             for label, score in zip(result["labels"], result["scores"]):
                 for triple in labels[label]:
@@ -115,21 +150,25 @@ class BartMNLI(TripleScorer):
 
         return triples
 
-class EntityBartMNLI(EntityScorer):
-    def __init__(self):
-        super().__init__()
-        self.classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli", device="cuda")
 
-    def score(self, text: str, entities: List[Entity | LinkedEntity]) -> List[Entity | LinkedEntity]:
-        labels = [e.label for e in entities if isinstance(e, LinkedEntity)]
-
-        if len(labels) > 0:
-            result = self.classifier(text, labels)
-
-            for entity, score in zip(entities, result["scores"]):
-                entity.score *= score
-
-        return entities
+# class EntityBartMNLI(EntityScorer):
+#     def __init__(self):
+#         super().__init__()
+#         self.classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli", device="cuda")
+#
+#     def score(self, text: str, entities: List[UniqueEntity]) -> List[UniqueEntity]:
+#         labels = [entity.label for entity in entities if entity.label is not None]
+#
+#         if len(labels) > 0:
+#             result = self.classifier(text, labels)
+#
+#             for unique_entity, score in zip(entities, result["scores"]):
+#                 unique_entity.score *= score
+#
+#                 for entity in unique_entity.mentions:
+#                     entity *= score
+#
+#         return entities
 
 
 class EntitySentenceBert(EntityScorer):
@@ -138,20 +177,43 @@ class EntitySentenceBert(EntityScorer):
         super().__init__()
         self.sentence_transformer = SentenceTransformer("all-distilroberta-v1", device="cuda")
 
-    def score(self, text: str, entities: List[Entity | LinkedEntity]) -> List[Entity | LinkedEntity]:
+    def score(self, text: str, entities: List[LinkedEntity]) -> List[LinkedEntity]:
+        sentence_spans = PunktSentenceTokenizer().span_tokenize(text)
         score_entities = list(filter(lambda e:
                                      hasattr(e, "label")
                                      and (e.label is not None or e.description is not None),
                                      entities))
 
-        texts = [f"{e.label} is a {e.description}" for e in score_entities]
-        embeddings = self.sentence_transformer.encode([text, *texts],
-                                                      convert_to_tensor=True)
+        score_entities = list(sorted(score_entities, key=lambda e: e.start_idx))
+        entity_iter = iter(score_entities)
+        entity = None
+        for span in sentence_spans:
+            sentence_entities = []
 
-        for i in range(1, len(embeddings)):
-            score_entities[i - 1].score *= cos_sim(embeddings[0], embeddings[i])[0][0].item()
+            while True:
+                if len(sentence_entities) == 0:
+                    if entity is not None and span[0] <= entity.start_idx and entity.end_idx <= span[1]:
+                        sentence_entities.append(entity)
 
-        return list(sorted(filter(lambda e: e.score >= 0.05, entities), key=lambda e: e.score, reverse=True))
+                entity = next(entity_iter, None)
 
-    def process(self, text: str, in_data: List[Entity | LinkedEntity]) -> Optional[List[Entity | LinkedEntity]]:
-        return self.score(text, in_data)
+                if entity is None:
+                    break
+
+                if entity.start_idx < span[0] or entity.end_idx > span[1]:
+                    break
+
+                sentence_entities.append(entity)
+
+            texts = [f"{c.label} is a {c.description}" for c in sentence_entities]
+            sentences = [text[span[0]:span[1]], *texts]
+            embeddings = self.sentence_transformer.encode(sentences,
+                                                          convert_to_tensor=True)
+
+            for i in range(1, len(embeddings)):
+                sim = cos_sim(embeddings[0], embeddings[i])[0][0].item()
+                sentence_entities[i - 1].score *= sim
+
+        entities = list(sorted(entities, key=lambda e: e.score, reverse=True))
+        # return entities
+        return list(filter(lambda e: e.score >= 0.05, entities))

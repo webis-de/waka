@@ -7,7 +7,7 @@ from nltk.tokenize import sent_tokenize
 from openie import StanfordOpenIE
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 
-from waka.nlp.kg import Triple, Property, Entity
+from waka.nlp.kg import Triple, Property, EntityMention
 from waka.nlp.text_processor import TextProcessor
 
 
@@ -101,7 +101,7 @@ class RebelExtractor(RelationExtractor):
         if len(substr_indices[token]) == 0:
             del substr_indices[token]
 
-        return Entity(url=None, text="", start_idx=start_idx, end_idx=start_idx, e_type=None)
+        return EntityMention(url=None, text="", start_idx=start_idx, end_idx=start_idx, e_type=None)
 
 
 class MRebelExtractor(RelationExtractor):
@@ -128,7 +128,7 @@ class MRebelExtractor(RelationExtractor):
         #                           tokenizer='Babelscape/mrebel-large',
         #                           device="cuda")
 
-    def process(self, text: str, in_data: str) -> Optional[List[Entity | Triple]]:
+    def process(self, text: str, in_data: str) -> Optional[List[EntityMention | Triple]]:
         super().process(text, in_data)
         triples = []
         triple_hashes = set()
@@ -161,9 +161,12 @@ class MRebelExtractor(RelationExtractor):
         subject, relation, object_, object_type, subject_type = '', '', '', '', ''
         substr_indices = {}
 
-        for token in tagged_text.replace("<s>", "").replace("<pad>", "").replace("</s>", "").replace("tp_XX",
-                                                                                                     "").replace(
-                "__en__", "").split():
+        for token in (tagged_text
+                      .replace("<s>", "")
+                      .replace("<pad>", "")
+                      .replace("</s>", "")
+                      .replace("tp_XX", "")
+                      .replace("__en__", "").split()):
             if token == "<triplet>" or token == "<relation>":
                 current = 't'
                 if relation != '':
@@ -207,7 +210,7 @@ class MRebelExtractor(RelationExtractor):
 
     @staticmethod
     def get_resource(token: str, type: str):
-        return Entity(url=None, text=token, start_idx=None, end_idx=None, e_type=type)
+        return EntityMention(url=None, text=token, start_idx=None, end_idx=None, e_type=type)
 
 
 class OpenIEExtractor(RelationExtractor):
@@ -238,4 +241,5 @@ class OpenIEExtractor(RelationExtractor):
 
 if __name__ == '__main__':
     re = OpenIEExtractor()
-    re.process("The Bauhaus-Universität Weimar is a university located in Weimar, Germany, and specializes in the artistic and technical fields. Established in 1860 as the Great Ducal Saxon Art School, it gained collegiate status on 3 June 1910. In 1919 the school was renamed Bauhaus by its new director Walter Gropius and it received its present name in 1996. There are more than 4000 students enrolled, with the percentage of international students above the national average at around 27%. In 2010 the Bauhaus-Universität Weimar commemorated its 150th anniversary as an art school and college in Weimar. In 2019 the university celebrated the centenary of the founding of the Bauhaus, together with partners all over the world. ")
+    re.process(
+        "The Bauhaus-Universität Weimar is a university located in Weimar, Germany, and specializes in the artistic and technical fields. Established in 1860 as the Great Ducal Saxon Art School, it gained collegiate status on 3 June 1910. In 1919 the school was renamed Bauhaus by its new director Walter Gropius and it received its present name in 1996. There are more than 4000 students enrolled, with the percentage of international students above the national average at around 27%. In 2010 the Bauhaus-Universität Weimar commemorated its 150th anniversary as an art school and college in Weimar. In 2019 the university celebrated the centenary of the founding of the Bauhaus, together with partners all over the world. ")

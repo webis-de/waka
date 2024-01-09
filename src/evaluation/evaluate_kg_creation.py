@@ -1,14 +1,23 @@
 import multiprocessing
 
+import click
+
 from evaluation.corpora.red_fm import RedFM
 from waka.nlp.kg import KnowledgeGraph
 from waka.nlp.kg_construction import KGConstructor
 
 
-def main():
+@click.command()
+@click.option("-s", "--stage", type=click.Choice(["fusion", "nli"]), default="fusion")
+def main(stage):
     multiprocessing.set_start_method("spawn")
     dataset = RedFM()
-    kg_construct = KGConstructor()
+
+    if stage == "fusion":
+        kg_construct = KGConstructor([])
+    else:
+        kg_construct = KGConstructor()
+
     macro_prec, macro_rec, macro_f1 = [], [], []
     desired_triples = []
     computed_triples = []

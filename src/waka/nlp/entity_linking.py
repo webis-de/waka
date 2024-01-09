@@ -7,11 +7,11 @@ import aiohttp
 import pycountry
 from cachetools import LFUCache
 
-from waka.nlp.kg import Entity, LinkedEntity
+from waka.nlp.kg import EntityMention, LinkedEntity
 from waka.nlp.text_processor import TextProcessor
 
 
-class EntityLinker(TextProcessor[List[Entity], List[LinkedEntity]], metaclass=abc.ABCMeta):
+class EntityLinker(TextProcessor[List[EntityMention], List[LinkedEntity]], metaclass=abc.ABCMeta):
     pass
 
 
@@ -21,7 +21,7 @@ class ElasticEntityLinker(EntityLinker):
         self.search_endpoint = "https://metareal-kb.web.webis.de/api/v1/kb/entity/search"
         self.cache = LFUCache(maxsize=512)
 
-    def process(self, text: str, in_data: List[Entity]) -> List[LinkedEntity]:
+    def process(self, text: str, in_data: List[EntityMention]) -> List[LinkedEntity]:
         super().process(text, in_data)
         request_entities = []
         linked_entities = []
@@ -48,6 +48,9 @@ class ElasticEntityLinker(EntityLinker):
 
         if isinstance(results, List):
             for result in results:
+                if not isinstance(result, List):
+                    print(result)
+
                 if len(result) > 0:
                     self.cache[result[0].text] = copy.deepcopy(result)
 
@@ -57,7 +60,7 @@ class ElasticEntityLinker(EntityLinker):
 
         return linked_entities
 
-    async def send_all(self, entities: List[Entity]) -> tuple[BaseException | List[List[LinkedEntity]]]:
+    async def send_all(self, entities: List[EntityMention]) -> tuple[BaseException | List[List[LinkedEntity]]]:
         results = []
         async with aiohttp.ClientSession() as session:
             for entity in entities:
@@ -67,7 +70,7 @@ class ElasticEntityLinker(EntityLinker):
 
         return results
 
-    async def send_request(self, session: aiohttp.ClientSession, entity: Entity) -> List[LinkedEntity]:
+    async def send_request(self, session: aiohttp.ClientSession, entity: EntityMention) -> List[LinkedEntity]:
         retrieved_entities = []
         queries = []
         try:
@@ -78,6 +81,8 @@ class ElasticEntityLinker(EntityLinker):
             pass
 
         queries.extend([x.strip() for x in entity.text.split(",")])
+        if entity.text.replace("'s", "") != entity.text:
+            queries.append(entity.text.replace("'s", ""))
 
         for query in queries:
             async with session.get(self.search_endpoint, params={"q": query}) as response:
@@ -85,6 +90,12 @@ class ElasticEntityLinker(EntityLinker):
 
                 if body["status"] == "success":
                     for e in body["data"]:
+                        try:
+                            if e["label"].lower().startswith('category:'):
+                                continue
+                        except AttributeError:
+                            pass
+
                         retrieved_entities.append(LinkedEntity(
                             url=e["id"],
                             start_idx=entity.start_idx,
