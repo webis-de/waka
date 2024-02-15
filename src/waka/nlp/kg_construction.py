@@ -92,6 +92,15 @@ class KGFactory:
                 best_triple = triple_ranking[0]
                 if best_triple.score >= 0.1:
                     self.kg.triples.append(best_triple)
+                    if isinstance(best_triple.subject, UniqueEntity):
+                        self.kg.entities.extend(best_triple.subject.mentions)
+                    else:
+                        self.kg.entities.append(best_triple.subject)
+
+                    if isinstance(best_triple.object, UniqueEntity):
+                        self.kg.entities.extend(best_triple.object.mentions)
+                    else:
+                        self.kg.entities.append(best_triple.object)
             except IndexError:
                 continue
 

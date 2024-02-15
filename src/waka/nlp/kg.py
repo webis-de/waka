@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import abc
-from typing import Optional, List
+from typing import Optional, List, Literal
 
 from databind.json import dumps
 from pydantic.dataclasses import dataclass
@@ -121,6 +121,7 @@ class UniqueEntity:
     description: Optional[str]
     score: Optional[float]
     mentions: List[LinkedEntity]
+    e_type: Literal["entity", "literal"]
 
     def __hash__(self):
         return hash(self.url)

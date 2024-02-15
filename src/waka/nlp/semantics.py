@@ -57,6 +57,9 @@ class WikidataFilter(TripleScorer):
     QUERY_TEMPLATE = \
         "ASK FROM <https://www.wikidata.org/wiki/> {{ <{}> <{}> <{}> }}"
 
+    QUERY_LITERAL_TEMPLATE = \
+        "ASK FROM <https://www.wikidata.org/wiki/> {{ <{}> <{}> \"{}\" }}"
+
     def score(self, text: str, triples: List[Triple]) -> List[Triple]:
         return self.send_all(triples)
 
@@ -66,8 +69,6 @@ class WikidataFilter(TripleScorer):
             for triple in triples:
                 results.append(self.send_request(session, triple))
 
-        # results = await asyncio.gather(*results, return_exceptions=True)
-
         for result, triple in zip(results, triples):
             if result:
                 triple.score *= 3
@@ -75,7 +76,10 @@ class WikidataFilter(TripleScorer):
         return triples
 
     def send_request(self, session: requests.Session, triple: Triple) -> bool:
-        query = WikidataFilter.QUERY_TEMPLATE.format(triple.subject.url, triple.predicate.url, triple.object.url)
+        if triple.object.e_type == "entity":
+            query = WikidataFilter.QUERY_TEMPLATE.format(triple.subject.url, triple.predicate.url, triple.object.url)
+        else:
+            query = WikidataFilter.QUERY_LITERAL_TEMPLATE.format(triple.subject.url, triple.predicate.url, triple.object.url)
 
         response = session.post(WikidataFilter.SPARQL_ENDPOINT, data=query,
                                 headers={"Content-Type": "application/sparql-query"})
@@ -87,6 +91,8 @@ class WikidataFilter(TripleScorer):
 
 
 class EntityScorer(TextProcessor[List[LinkedEntity], List[UniqueEntity]], metaclass=abc.ABCMeta):
+    LITERAL_TYPES = {"PERCENT", "MONEY", "QUANTITY", "CARDINAL", "ORDINAL", "DATE", "TIME"}
+
     @abc.abstractmethod
     def score(self, text: str, entities: List[LinkedEntity]) -> List[LinkedEntity]:
         pass
@@ -108,15 +114,28 @@ class EntityScorer(TextProcessor[List[LinkedEntity], List[UniqueEntity]], metacl
         for url, cluster in url_mention_cluster.items():
             if len(cluster) > 0:
                 sorted_cluster = sorted(cluster, key=lambda e: e.score, reverse=True)
+                literal = all(map(lambda e: e.e_type in EntityScorer.LITERAL_TYPES, cluster))
+
                 first = next(iter(sorted_cluster))
 
-                mention_clusters.append(UniqueEntity(
-                    url=url,
-                    label=first.label,
-                    description=first.description,
-                    score=first.score,
-                    mentions=list(sorted_cluster)
-                ))
+                if literal:
+                    mention_clusters.append(UniqueEntity(
+                        url=url,
+                        label=first.label,
+                        description=first.description,
+                        score=first.score,
+                        mentions=list(sorted_cluster),
+                        e_type="literal"
+                    ))
+                else:
+                    mention_clusters.append(UniqueEntity(
+                        url=url,
+                        label=first.label,
+                        description=first.description,
+                        score=first.score,
+                        mentions=list(sorted_cluster),
+                        e_type="entity"
+                    ))
 
         return mention_clusters
 
@@ -149,26 +168,6 @@ class BartMNLI(TripleScorer):
                     triple.score *= score
 
         return triples
-
-
-# class EntityBartMNLI(EntityScorer):
-#     def __init__(self):
-#         super().__init__()
-#         self.classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli", device="cuda")
-#
-#     def score(self, text: str, entities: List[UniqueEntity]) -> List[UniqueEntity]:
-#         labels = [entity.label for entity in entities if entity.label is not None]
-#
-#         if len(labels) > 0:
-#             result = self.classifier(text, labels)
-#
-#             for unique_entity, score in zip(entities, result["scores"]):
-#                 unique_entity.score *= score
-#
-#                 for entity in unique_entity.mentions:
-#                     entity *= score
-#
-#         return entities
 
 
 class EntitySentenceBert(EntityScorer):
