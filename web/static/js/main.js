@@ -236,7 +236,7 @@ function onKgReceive(responseText){
     console.log(kg)
 
 
-    let entities =  Array.from(kg.entities)
+    let entities =  Array.from(kg.entity_mentions)
     entities.sort(function (a, b){return +(a.start_idx - b.start_idx) || -((a.end_idx - a.start_idx) - (b.end_idx - b.start_idx))})
     let textEditor = document.getElementById("text-editor")
 

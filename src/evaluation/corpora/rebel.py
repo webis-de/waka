@@ -86,7 +86,7 @@ class Rebel(CorpusParser):
 
             triples.append(Triple(subject_entity, predicate, object_entity, None))
 
-        kg = KnowledgeGraph(text=text, triples=triples, entities=entities, entity_candidates=[])
+        kg = KnowledgeGraph(text=text, triples=triples, entities=entities, entity_mentions=[])
 
         return kg
 

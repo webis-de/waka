@@ -44,14 +44,14 @@ def main(stage: str) -> None:
                 aggregated.extend(entity.mentions)
             entities = list(sorted(set(aggregated), key=lambda x: x.score, reverse=True))
 
-        result = EntityMention.eval(kg.entities, entities)
+        result = EntityMention.eval(kg.entity_mentions, entities)
 
         correct_entities = [e for e in entities if e in kg.entities]
         if len(correct_entities) > 0:
             min_score = min([e.score for e in correct_entities])
             min_scores.append(min_score)
 
-        des_entities.extend(kg.entities)
+        des_entities.extend(kg.entity_mentions)
         computed_entities.extend(entities)
 
         macro_prec.append(result["precision"])

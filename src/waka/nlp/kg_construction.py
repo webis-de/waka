@@ -5,6 +5,7 @@ import logging
 from typing import List, Optional, Dict
 
 import numpy as np
+from Levenshtein import distance
 
 from waka.nlp.entity_linking import ElasticEntityLinker
 from waka.nlp.entity_recognition import EnsembleNER
@@ -50,7 +51,7 @@ class KGFactory:
         return self
 
     def build(self) -> KnowledgeGraph:
-        self.kg = KnowledgeGraph(text=self.text, triples=[], entities=[], entity_candidates=[])
+        self.kg = KnowledgeGraph(text=self.text, triples=[], entities=[], entity_mentions=[])
         entities_by_mention = self._construct_entity_by_mention_index()
 
         triple_sets = []
@@ -92,22 +93,108 @@ class KGFactory:
                 best_triple = triple_ranking[0]
                 if best_triple.score >= 0.1:
                     self.kg.triples.append(best_triple)
-                    if isinstance(best_triple.subject, UniqueEntity):
-                        self.kg.entities.extend(best_triple.subject.mentions)
-                    else:
-                        self.kg.entities.append(best_triple.subject)
 
-                    if isinstance(best_triple.object, UniqueEntity):
-                        self.kg.entities.extend(best_triple.object.mentions)
-                    else:
-                        self.kg.entities.append(best_triple.object)
+                    self.kg.entities.append(best_triple.subject)
+                    self.kg.entities.append(best_triple.object)
             except IndexError:
                 continue
 
-        self.kg.entities = list(self.kg.entities)
         self.kg.triples = list(set(self.kg.triples))
+        self.kg.entities = list(set(self.kg.entities))
+        resolved_entities = self._resolve_entity_mention_conflicts()
+        self.kg.entity_mentions = []
+        for entity in resolved_entities:
+            self.kg.entity_mentions.extend(entity.mentions)
 
         return self.kg
+
+    def _resolve_entity_mention_conflicts(self) -> List[UniqueEntity]:
+        unique_entities = []
+        for triple in self.kg.triples:
+            unique_entities.append(triple.subject)
+            unique_entities.append(triple.object)
+
+        unique_entities = list(set(unique_entities))
+
+        for entity in unique_entities:
+            mention_copy = entity.mentions[:]
+            for i in range(len(mention_copy)):
+                emi = mention_copy[i]
+                for j in range(i + 1, len(mention_copy)):
+                    emj = mention_copy[j]
+
+                    if emi.overlaps_with(emj):
+                        dist_i = distance(emi.label, emi.text)
+                        dist_j = distance(emj.label, emj.text)
+
+                        if dist_i > dist_j:
+                            entity.mentions = [e for e in entity.mentions if e is not emi]
+                        else:
+                            entity.mentions = [e for e in entity.mentions if e is not emj]
+
+        conflicts = self._get_conflicts(unique_entities)
+
+        while len(conflicts) > 0:
+            conflicts = list(sorted(conflicts, key=lambda item: self._get_conflict_score(item[0], item[1])))
+            entity, mention = conflicts[0]
+            entity.mentions = [m for m in entity.mentions if m is not mention]
+
+            conflicts = self._get_conflicts(unique_entities)
+
+        # for i in range(len(unique_entities)):
+        #     for em1 in unique_entities[i].mentions[:]:
+        #         for j in range(i + 1, len(unique_entities)):
+        #             for em2 in unique_entities[j].mentions[:]:
+        #                 if em1 == em2:
+        #                     continue
+        #
+        #                 if em1.overlaps_with(em2):
+        #                     if em1.score >= em2.score and len(unique_entities[j].mentions) > 1:
+        #                         unique_entities[j].mentions.remove(em2)
+        #                     elif len(unique_entities[i].mentions) > 1:
+        #                         unique_entities[i].mentions.remove(em1)
+        #                     else:
+        #                         if unique_entities[i].score >= unique_entities[j].score:
+        #                             unique_entities[j].mentions.remove(em2)
+        #                         else:
+        #                             unique_entities[i].mentions.remove(em1)
+
+        for triple in self.kg.triples[:]:
+            if len(triple.subject.mentions) == 0 or len(triple.object.mentions) == 0:
+                self.kg.triples.remove(triple)
+
+        return unique_entities
+
+    @staticmethod
+    def _get_conflict_score(entity, mention):
+        dist = distance(entity.label, mention.text)
+        dist_score = 1 - (dist / max(len(entity.label), len(mention.text)))
+        num_mentions = 1 / len(entity.mentions)
+        length_score = len(mention.text)
+
+        return dist_score * num_mentions * length_score * mention.score
+
+
+    @staticmethod
+    def _get_conflicts(unique_entities):
+        conflicts = set()
+        for k in range(len(unique_entities)):
+            entity1 = unique_entities[k]
+            for i in range(len(entity1.mentions)):
+                emi = entity1.mentions[i]
+                for l in range(k + 1, len(unique_entities)):
+                    entity2 = unique_entities[l]
+                    for j in range(len(entity2.mentions)):
+                        if k == l:
+                            if i == j:
+                                continue
+
+                        emj = entity2.mentions[j]
+                        if emi.overlaps_with(emj):
+                            conflicts.add((entity1, emi))
+                            conflicts.add((entity2, emj))
+
+        return list(conflicts)
 
     def _construct_entity_by_mention_index(self) -> Dict[str, List[UniqueEntity]]:
         entities_by_mention = {}

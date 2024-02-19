@@ -25,3 +25,4 @@ sentence-transformers==2.2.2
 nest-asyncio==1.5.8
 pycountry
 click
+levenshtein

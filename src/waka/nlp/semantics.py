@@ -145,6 +145,8 @@ class BartMNLI(TripleScorer):
         super().__init__()
         self.nli_model = AutoModelForSequenceClassification.from_pretrained('facebook/bart-large-mnli')
         self.tokenizer = AutoTokenizer.from_pretrained('facebook/bart-large-mnli')
+        # self.nli_model = AutoModelForSequenceClassification.from_pretrained('MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli')
+        # self.tokenizer = AutoTokenizer.from_pretrained('MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli')
         self.classifier = pipeline("zero-shot-classification", model=self.nli_model, tokenizer=self.tokenizer,
                                    device="cuda")
 

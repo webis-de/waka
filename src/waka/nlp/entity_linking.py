@@ -5,7 +5,7 @@ from typing import List
 
 import aiohttp
 import pycountry
-from cachetools import LFUCache
+from cachetools import LRUCache
 
 from waka.nlp.kg import EntityMention, LinkedEntity
 from waka.nlp.text_processor import TextProcessor
@@ -19,7 +19,7 @@ class ElasticEntityLinker(EntityLinker):
     def __init__(self):
         super().__init__()
         self.search_endpoint = "https://metareal-kb.web.webis.de/api/v1/kb/entity/search"
-        self.cache = LFUCache(maxsize=512)
+        self.cache = LRUCache(4096)
 
     def process(self, text: str, in_data: List[EntityMention]) -> List[LinkedEntity]:
         super().process(text, in_data)
@@ -51,14 +51,14 @@ class ElasticEntityLinker(EntityLinker):
                 if not isinstance(result, List):
                     print(result)
 
-                if len(result) > 0:
-                    self.cache[result[0].text] = copy.deepcopy(result)
+                # if len(result) > 0:
+                #     self.cache[result[0].text] = copy.deepcopy(result)
 
                 linked_entities.extend(result)
         else:
             self.logger.error(results)
 
-        return linked_entities
+        return list(set(linked_entities))
 
     async def send_all(self, entities: List[EntityMention]) -> tuple[BaseException | List[List[LinkedEntity]]]:
         results = []
@@ -105,5 +105,11 @@ class ElasticEntityLinker(EntityLinker):
                             score=e["score"] / 305,
                             e_type=entity.e_type,
                             description=e["description"]))
+
+        # scores = torch.tensor([e.score for e in retrieved_entities], dtype=torch.float32)
+        # scores = torch.softmax(scores, dim=0)
+        #
+        # for entity, score in zip(retrieved_entities, scores):
+        #     entity.score = score.item()
 
         return retrieved_entities

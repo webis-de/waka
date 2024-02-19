@@ -190,7 +190,7 @@ class StanzaNER(EntityRecognizer):
         self.decimal_types = {"PERCENT", "MONEY", "QUANTITY", "CARDINAL", "ORDINAL"}
         self.date_types = {"DATE", "TIME"}
 
-    def extract_noun_phrases(self, sentence, constituency):
+    def extract_noun_phrases(self, text, sentence, constituency):
         tree_queue = []
         phrase_list = []
 
@@ -219,9 +219,8 @@ class StanzaNER(EntityRecognizer):
                         if e.text == "":
                             e.start_idx = word_index[word_id].start_char
 
-                        e.text += " " + constituency.label
-                        e.text = e.text.strip()
                         e.end_idx = word_index[word_id].end_char
+                        e.text = text[e.start_idx: e.end_idx]
 
             if constituency.label == "NP":
                 phrase_list.insert(0, EntityMention(text="", start_idx=None, end_idx=None, url=None, e_type="NP"))
@@ -240,7 +239,7 @@ class StanzaNER(EntityRecognizer):
         doc = self.nlp(text)
 
         for sent in doc.sentences:
-            entities.extend(self.extract_noun_phrases(sent, sent.constituency))
+            entities.extend(self.extract_noun_phrases(text, sent, sent.constituency))
 
         for entity in doc.ents:
             url = None

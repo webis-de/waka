@@ -87,6 +87,9 @@ class EntityMention(Resource):
 
         return {"precision": prec, "recall": recall, "f1": f1}
 
+    def overlaps_with(self, e: EntityMention) -> bool:
+        return self.end_idx >= e.start_idx and e.end_idx >= self.start_idx
+
 
 @dataclass(kw_only=True)
 class LinkedEntity(EntityMention):
@@ -226,8 +229,8 @@ class Triple:
 class KnowledgeGraph:
     text: Optional[str]
     triples: List[Triple]
-    entities: List[LinkedEntity | EntityMention]
-    entity_candidates: List[LinkedEntity | EntityMention]
+    entities: List[UniqueEntity]
+    entity_mentions: List[LinkedEntity | EntityMention]
 
     def __str__(self) -> str:
         return self.to_rdf()
