@@ -76,23 +76,10 @@ export class KgVis{
              if(!nodesMap.has(entity.url)){
                 nodesMap.set(entity.url,
                     KgVis.createNodeFromEntity(entity))
-             }else{
-                 let node = nodesMap.get(entity.url)
-                 node.of_triple[entity.text] = entity.of_triple
              }
         }
 
         for (let triple of kg.triples){
-            // if(!nodesMap.has(triple.subject.url)){
-            //     nodesMap.set(triple.subject.url,
-            //         KgVis.createNodeFromEntity(triple.subject))
-            // }
-            //
-            // if(!nodesMap.has(triple.object.url)){
-            //     nodesMap.set(triple.object.url,
-            //         KgVis.createNodeFromEntity(triple.object))
-            // }
-
             let edge = KgVis.createEdgeFromTriple(triple)
             edges.push(edge)
         }
@@ -102,20 +89,23 @@ export class KgVis{
     }
 
     static createNodeFromEntity(entity) {
-        let of_triple
-        if(Array.isArray(entity.of_triple)){
-            of_triple = {}
-            of_triple[entity.text] = entity.of_triple
-        } else{
-            of_triple = entity.of_triple
+        let uniqueEntity = entity
+        if (!"mentions" in entity){
+            uniqueEntity = {
+                description: entity.description,
+                e_type: "entity",
+                label: entity.label,
+                mentions: [entity],
+                score: entity.score,
+                url: entity.url
+            }
         }
-
 
         return {
             id: entity.url ? entity.url : entity.id,
-            label: entity.label ? entity.label : entity.text,
+            label: entity.e_type === "literal" ? entity.mentions[0].text : entity.label,
             title: createEntityDescription(entity),
-            of_triple: of_triple,
+            data_entity: uniqueEntity,
             ...KgVis.#defaultNodeOptions
         }
     }

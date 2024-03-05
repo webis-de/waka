@@ -100,8 +100,8 @@ class KGFactory:
                 continue
 
         self.kg.triples = list(set(self.kg.triples))
-        self.kg.entities = list(set(self.kg.entities))
         resolved_entities = self._resolve_entity_mention_conflicts()
+        self.kg.entities = list(set(resolved_entities))
         self.kg.entity_mentions = []
         for entity in resolved_entities:
             self.kg.entity_mentions.extend(entity.mentions)
@@ -141,27 +141,11 @@ class KGFactory:
 
             conflicts = self._get_conflicts(unique_entities)
 
-        # for i in range(len(unique_entities)):
-        #     for em1 in unique_entities[i].mentions[:]:
-        #         for j in range(i + 1, len(unique_entities)):
-        #             for em2 in unique_entities[j].mentions[:]:
-        #                 if em1 == em2:
-        #                     continue
-        #
-        #                 if em1.overlaps_with(em2):
-        #                     if em1.score >= em2.score and len(unique_entities[j].mentions) > 1:
-        #                         unique_entities[j].mentions.remove(em2)
-        #                     elif len(unique_entities[i].mentions) > 1:
-        #                         unique_entities[i].mentions.remove(em1)
-        #                     else:
-        #                         if unique_entities[i].score >= unique_entities[j].score:
-        #                             unique_entities[j].mentions.remove(em2)
-        #                         else:
-        #                             unique_entities[i].mentions.remove(em1)
-
         for triple in self.kg.triples[:]:
             if len(triple.subject.mentions) == 0 or len(triple.object.mentions) == 0:
                 self.kg.triples.remove(triple)
+
+        unique_entities = [e for e in unique_entities if len(e.mentions) > 0]
 
         return unique_entities
 

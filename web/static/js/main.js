@@ -34,28 +34,28 @@ function main(){
     })
 
     let addEntityButton = document.getElementById("add-annotation-button")
-    addEntityButton.addEventListener("click", function (e){
+    addEntityButton.addEventListener("click", function (){
         let annToolbox = document.getElementById("ann-toolbox")
         annToolbox.style.visibility = "hidden"
 
-        let textEditor = document.getElementById("text-editor")
         let selection = window.getSelection()
         if(selection.type === "Range"){
             let range = selection.getRangeAt(0)
             let container = range.commonAncestorContainer
             let text = container.textContent.substring(range.startOffset, range.endOffset)
 
-            let entitySpan = createEntitySpan({
+            let entity = {
                 text: text,
                 url: exampleNS + encodeURIComponent(text),
                 start_idx: range.startOffset,
                 end_idx: range.endOffset
-            })
+            }
+            let entitySpan = createEntitySpan(entity)
 
             let currentHTML =  container.textContent
 
             container.replaceWith(document.createTextNode(currentHTML.substring(0, range.startOffset)), entitySpan, document.createTextNode(currentHTML.substring(range.endOffset)))
-            drawEntityChangePanel([entitySpan])
+            drawEntityChangePanel(entity)
 
             selection.removeAllRanges()
         }
@@ -91,6 +91,25 @@ function main(){
         function (responseText) {onEntitySearchReceive(responseText, entityName)})
             e.target.value = ""
         }
+    })
+
+    let example1Anchor = document.getElementById("example-1")
+    example1Anchor.addEventListener("click", function (){
+        let editor = document.getElementById("text-editor")
+        editor.innerText =
+            "Dracula Untold is a 2014 American dark fantasy action film directed by Gary Shore in his feature film debut and written by Matt Sazama and Burk Sharpless. " +
+            "A reboot of the \"Dracula\" film series, the plot creates an origin story for the titular character, rather than using the storyline of Bram Stoker's 1897 novel. " +
+            "In this adaptation, Dracula is the monster alter ego of historical figure Vlad III \"the Impaler\" Drăculea. " +
+            "Luke Evans portrays the title character, with Sarah Gadon, Dominic Cooper, Art Parkinson, and Charles Dance cast in supporting roles. Principal photography began in Northern Ireland on August 5, 2013."
+    })
+
+    let example2Anchor = document.getElementById("example-2")
+    example2Anchor.addEventListener("click", function () {
+        let editor = document.getElementById("text-editor")
+        editor.innerText =
+            "The Bauhaus-Universität Weimar is a university located in Weimar, Germany, and specializes in the artistic and technical fields. " +
+            "Established in 1860 as the Great Ducal Saxon Art School, it gained collegiate status on 3 June 1910. In 1919 the school was renamed Bauhaus by its new director Walter Gropius and it received its present name in 1996. " +
+            "There are more than 4000 students enrolled, with the percentage of international students above the national average at around 27%. In 2010 the Bauhaus-Universität Weimar commemorated its 150th anniversary as an art school and college in Weimar."
     })
 
     addEventListener("keydown", function (e){
@@ -139,7 +158,8 @@ function onClick(e) {
     if(target.className === "overlay-entity-container"){
         let overlayContent = document.getElementById("overlay-content")
         let currentEntityId = overlayContent.href
-        let currentEntitySpanIds = JSON.parse(overlayContent.getAttribute("data-ids"))
+        let oldEntity = JSON.parse(overlayContent.getAttribute("data-entity"))
+
         let selectedEntityId = target.getElementsByClassName("overlay-entity-link")[0].href
 
         if(currentEntityId === selectedEntityId){
@@ -163,14 +183,13 @@ function onClick(e) {
         }
 
         let oldNode = kgVis.getNodeById(currentEntityId)
-        // let selectedEntity = JSON.parse(document.getElementById(currentEntitySpanIds[0]).getAttribute("data-entity"))
         let selectedEntity = entityCache.get(selectedEntityId)
-        if(oldNode !== null){
-            selectedEntity.of_triple = oldNode.of_triple
-        }
-
+        selectedEntity.start_idx = oldEntity.start_idx
+        selectedEntity.end_idx = oldEntity.end_idx
+        console.log(selectedEntity)
         let newNode = KgVis.createNodeFromEntity(selectedEntity)
 
+        // console.log(JSON.stringify(oldNode) + "->" + JSON.stringify(newNode))
         if(oldNode !== null){
             let index = kg.entities.indexOf(entityCache.get(currentEntityId))
             kg.entities[index] = selectedEntity
@@ -215,7 +234,7 @@ function onKgButtonClicked(e){
     $("#graph-icon").hide()
 
     let editor = document.getElementById("text-editor")
-    // editor.setAttribute("contenteditable", false)
+    editor.setAttribute("contenteditable", false)
 
     let editorContent = editor.innerText
     editorContent = editorContent.trim()
@@ -231,6 +250,7 @@ function onKgReceive(responseText){
     $("#loading-icon").hide()
     $("#graph-icon").show()
     $("#save-button").prop("disabled", false)
+    $("#create-kg-button").prop("disabled", false)
 
     kg = JSON.parse(responseText)
     console.log(kg)
@@ -239,27 +259,30 @@ function onKgReceive(responseText){
     let entities =  Array.from(kg.entity_mentions)
     entities.sort(function (a, b){return +(a.start_idx - b.start_idx) || -((a.end_idx - a.start_idx) - (b.end_idx - b.start_idx))})
     let textEditor = document.getElementById("text-editor")
+    textEditor.setAttribute("contenteditable", true)
 
     let idx = 0
 
-    textEditor.innerHTML = ""
-    for(let entity of entities){
-        if (entity.start_idx < idx){
-            continue
+    if (entities.length > 0){
+        textEditor.innerHTML = ""
+        for(let entity of entities){
+            if (entity.start_idx < idx){
+                continue
+            }
+
+            let plain = kg.text.substring(idx, entity.start_idx)
+            if(plain !== ""){
+                let textNode = document.createTextNode(plain)
+                textEditor.appendChild(textNode)
+            }
+
+            textEditor.appendChild(createEntitySpan(entity))
+            idx = entity.end_idx
         }
 
-        let plain = kg.text.substring(idx, entity.start_idx)
-        if(plain !== ""){
-            let textNode = document.createTextNode(plain)
-            textEditor.appendChild(textNode)
-        }
-
-        textEditor.appendChild(createEntitySpan(entity))
-        idx = entity.end_idx
+        let textNode = document.createTextNode(kg.text.substring(idx))
+        textEditor.appendChild(textNode)
     }
-
-    let textNode = document.createTextNode(kg.text.substring(idx))
-    textEditor.appendChild(textNode)
 
     kgVis = new KgVis(kg)
     kgVis.draw(document.getElementById("kg-vis"))
@@ -282,26 +305,24 @@ function onKgReceive(responseText){
 
     kgVis.getNetwork().on("click", function (e){
         if(e.nodes.length > 0){
-            let entitySpans = document.querySelectorAll(".entity[href=\""+ e.nodes[0]+"\"]")
+            // let entitySpans = document.querySelectorAll(".entity[href=\""+ e.nodes[0]+"\"]")
+            let entity = e.nodes[0].data_entity
 
-            if(entitySpans.length > 0){
-                drawEntityChangePanel(entitySpans)
-            }
+            drawEntityChangePanel(entity)
         }
     })
+
 }
 
-function onEntitySearchReceive(responseText, query){
-    let overlay = document.getElementById("overlay-content")
-    let entitySpanIds = JSON.parse(overlay.getAttribute("data-ids"))
-    let entitySpan = document.getElementById(entitySpanIds[0])
+function onEntitySearchReceive(responseText){
+    let textSpan = document.getElementById("overlay-entity-text-span")
 
     let data = JSON.parse(responseText)["data"]
 
     entityCache.clear()
     for (let entity of data){
         entity.url = entity.id
-        entity.text = [].reduce.call(entitySpan.childNodes, function(a, b) { return a + (b.nodeType === 3 ? b.textContent : ''); }, '');
+        entity.text = textSpan.innerText;
         entityCache.set(entity.id, entity)
     }
 
@@ -334,7 +355,8 @@ function createEntitySpan(entity){
     entitySpan.appendChild(createEntityDescription(entity))
 
     entitySpan.addEventListener("click", function (e){
-        drawEntityChangePanel([e.target])
+        let entity = e.target.getAttribute("data-entity")
+        drawEntityChangePanel(JSON.parse(entity))
     })
 
     entitySpan.addEventListener("mouseover", function (e){
@@ -366,13 +388,24 @@ export function createEntityDescription(entity){
     entityDescription.setAttribute("contenteditable", false)
 
     let header = document.createElement("header")
-    header.innerText = entity.label
+    if (entity.label === null){
+        header.innerText = entity.text
+    }else{
+        header.innerText = entity.label
+    }
+
     entityDescription.appendChild(header)
 
     entityDescription.appendChild(document.createElement("hr"))
 
     let description = document.createElement("div")
-    description.innerText = entity.description
+
+    if (entity.label === null){
+        description.innerText = "literal"
+    } else{
+        description.innerText = entity.description
+    }
+
     entityDescription.appendChild(description)
 
     let link = document.createElement("a")
@@ -388,26 +421,26 @@ export function createEntityDescription(entity){
     return entityDescription
 }
 
-function drawEntityChangePanel(entitySpans){
+function drawEntityChangePanel(entity){
     let overlay = document.getElementById("overlay-entity")
     overlay.style.display = "flex"
 
     let overlayContent = document.getElementById("overlay-content")
-    overlayContent.href = entitySpans[0].getAttribute("href")
+    overlayContent.href = entity.url
+    overlayContent.setAttribute("data-entity", JSON.stringify(entity))
 
-    let ids = []
-    for (let span of entitySpans){
-        ids.push(span.getAttribute("id"))
+    let entityName
+
+    if ("mentions" in entity){
+        entityName = entity.mentions[0].text
+    } else{
+        entityName = entity.text
     }
-    overlayContent.setAttribute("data-ids", JSON.stringify(ids))
-
-    let entityName = [].reduce.call(entitySpans[0].childNodes, function(a, b) { return a + (b.nodeType === 3 ? b.textContent : ''); }, '');
 
     let textSpan = document.getElementById("overlay-entity-text-span")
     textSpan.innerText = entityName
 
-    let currentEntity = JSON.parse(entitySpans[0].getAttribute("data-entity"))
-    updateEntityChangePanel(currentEntity)
+    updateEntityChangePanel(entity)
 
     let entityResultContainer = document.getElementById("overlay-entity-result-container")
     entityResultContainer.innerHTML = ""
@@ -419,11 +452,26 @@ function drawEntityChangePanel(entitySpans){
 }
 
 function updateEntityChangePanel(entity){
+    let entityName
+    if(entity.label !== null){
+        entityName = entity.label;
+    }  else{
+        if ("mentions" in entity){
+            entityName = entity.mentions[0].text
+        } else{
+            entityName = entity.text
+        }
+    }
     let entityLabel = document.getElementById("overlay-entity-label")
-    entityLabel.innerText = entity.label
+    entityLabel.innerText = entityName
 
     let entityDescription = document.getElementById("overlay-entity-description")
-    entityDescription.innerText = entity.description
+
+    if("description" in entity){
+        entityDescription.innerText = entity.description
+    } else{
+        entityDescription.innerText = "literal"
+    }
 }
 
 function requestBackend(method, url, params, header, data, callback){
