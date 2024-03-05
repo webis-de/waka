@@ -207,7 +207,9 @@ class StanzaNER(EntityRecognizer):
             constituency = tree_queue.pop(0)
 
             if constituency is None:
-                noun_phrases.append(phrase_list.pop(0))
+                entity = phrase_list.pop(0)
+                if entity.start_idx is not None and entity.end_idx is not None:
+                    noun_phrases.append(entity)
                 parent_label = None
                 continue
 
