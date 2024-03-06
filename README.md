@@ -21,7 +21,7 @@ After starting the server, WAKA will be available at: http://localhost:8000/stat
 
 ## Cite this work
 
-```
+```bibtex
 @InProceedings{gohsen:2024a,
   author =                   {Marcel Gohsen and Benno Stein},
   booktitle =                {9th ACM SIGIR Conference on Human Information Interaction and Retrieval (CHIIR 2024)},
