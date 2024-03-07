@@ -173,7 +173,6 @@ body{
 }
 
 .entity:hover {
-    background-color: var(--highlight-color);
     transition-delay: 0s;
 }
 

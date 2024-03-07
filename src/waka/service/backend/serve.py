@@ -5,6 +5,7 @@ from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.responses import RedirectResponse
 
 from waka.nlp.kg import KnowledgeGraph
 from waka.nlp.kg_construction import KGConstructor
@@ -49,6 +50,10 @@ class KGConstructionRouter(APIRouter):
                            endpoint=self.create_kg,
                            response_model=KnowledgeGraph,
                            methods=["POST"])
+
+        self.add_api_route("/",
+                           endpoint=lambda: RedirectResponse(url="/static/index.html"),
+                           methods=["GET"])
 
     async def create_kg(self, text: Text) -> KnowledgeGraph:
         return self.kg_construct.construct(text.content)

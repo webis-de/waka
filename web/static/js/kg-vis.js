@@ -146,33 +146,21 @@ export class KgVis{
         this.#nodes.update(node)
     }
 
-    replaceNode(text, oldNode, newNode){
-        if(oldNode !== null){
-            if(Object.keys(oldNode.of_triple).length === 1){
-                this.#nodes.remove(oldNode.id)
-            }/*else{
-                newNode.of_triple = {}
-                newNode.of_triple[text] = oldNode.of_triple[text]
-            }*/
-
-            let edgeUpdates =
-                this.#edges.map(function (e){
-                    if(oldNode.of_triple[text].includes(e.id)){
-                        if(e.from === oldNode.id){
-                            e.from = newNode.id
-                        }
-
-                        if(e.to === oldNode.id){
-                            e.to = newNode.id
-                        }
-                    }
-
-                    return e
-                })
-
-            this.#edges.update(edgeUpdates)
+    update(kg){
+        for(let entity of kg.entities){
+            this.updateNode(KgVis.createNodeFromEntity(entity))
         }
-        this.#nodes.update(newNode)
+
+        let _this = this
+        this.#nodes.forEach(function (node) {
+            if(kg.entities.filter(e => e.url === node.id).length === 0){
+                _this.#nodes.remove(node.id)
+            }
+        })
+
+        for(let triple of kg.triples){
+            this.#edges.update(KgVis.createEdgeFromTriple(triple))
+        }
     }
 
     removeNode(node){

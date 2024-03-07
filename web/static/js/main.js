@@ -29,7 +29,7 @@ function main(){
     overlay.addEventListener("click",  onClick)
 
     let saveButton = document.getElementById("save-button")
-    saveButton.addEventListener("click", function (e){
+    saveButton.addEventListener("click", function (){
         download("kg.nt", convertToRDF(kg))
     })
 
@@ -47,12 +47,34 @@ function main(){
             let entity = {
                 text: text,
                 url: exampleNS + encodeURIComponent(text),
+                description: "literal",
                 start_idx: range.startOffset,
                 end_idx: range.endOffset
             }
             let entitySpan = createEntitySpan(entity)
 
             let currentHTML =  container.textContent
+
+            if(kgVis === null){
+                kgVis = new KgVis({triples: [], entities: []})
+                kgVis.draw(document.getElementById("kg-vis"))
+                kg = emptyKG()
+            }
+
+            kg.entities = kg.entities.concat([
+                {
+                    text: text,
+                    url: exampleNS + encodeURIComponent(text),
+                    description: "literal",
+                    mentions: [entity]
+                }
+            ])
+
+            kg.entity_mentions = kg.entity_mentions.concat([
+                entity
+            ])
+
+            kgVis.update(kg)
 
             container.replaceWith(document.createTextNode(currentHTML.substring(0, range.startOffset)), entitySpan, document.createTextNode(currentHTML.substring(range.endOffset)))
             drawEntityChangePanel(entity)
@@ -62,20 +84,22 @@ function main(){
     })
 
     let deleteEntityButton = document.getElementById("entity-delete")
-    deleteEntityButton.addEventListener("click", function (e){
+    deleteEntityButton.addEventListener("click", function (){
         let overlayContent = document.getElementById("overlay-content")
-        let entitySpanIds = JSON.parse(overlayContent.getAttribute("data-ids"))
-        for(let spanId of entitySpanIds){
-            let entitySpan = document.getElementById(spanId)
-            let content = [].reduce.call(entitySpan.childNodes, function(a, b) { return a + (b.nodeType === 3 ? b.textContent : ''); }, '');
+        let oldEntity = JSON.parse(overlayContent.getAttribute("data-entity"))
 
-            entitySpan.replaceWith(document.createTextNode(content))
+        updateKG(oldEntity, null)
+        kgVis.update(kg)
+
+        if("mentions" in oldEntity){
+            for(let mentions of oldEntity.mentions){
+                let span = document.getElementById(mentions.start_idx + ":" + mentions.end_idx + ":" + mentions.url)
+                span.replaceWith(document.createTextNode(mentions.text))
+            }
+        }else{
+            let span = document.getElementById(oldEntity.start_idx + ":" + oldEntity.end_idx + ":" + oldEntity.url)
+            span.replaceWith(document.createTextNode(oldEntity.text))
         }
-
-        let nodeId = overlayContent.href
-        let node = kgVis.getNodeById(nodeId)
-
-        kgVis.removeNode(node)
 
         let overlay = document.getElementById("overlay-entity")
         overlay.style.display = "none"
@@ -181,49 +205,133 @@ function onClick(e) {
             kgVis.draw(document.getElementById("kg-vis"))
             kg = emptyKG()
         }
-
-        let oldNode = kgVis.getNodeById(currentEntityId)
         let selectedEntity = entityCache.get(selectedEntityId)
-        selectedEntity.start_idx = oldEntity.start_idx
-        selectedEntity.end_idx = oldEntity.end_idx
-        console.log(selectedEntity)
-        let newNode = KgVis.createNodeFromEntity(selectedEntity)
 
-        // console.log(JSON.stringify(oldNode) + "->" + JSON.stringify(newNode))
-        if(oldNode !== null){
-            let index = kg.entities.indexOf(entityCache.get(currentEntityId))
-            kg.entities[index] = selectedEntity
 
-            kgVis.replaceNode(selectedEntity.text, oldNode, newNode)
-        } else{
-            if(kgVis.getNodeById(newNode.id) === null){
-                kg.entities.push(selectedEntity)
-                kgVis.updateNode(newNode)
+        if("mentions" in oldEntity){
+            for(let mention of oldEntity.mentions){
+                let span = document.getElementById(mention.start_idx+":"+mention.end_idx+":"+mention.url)
+                selectedEntity.start_idx = mention.start_idx
+                selectedEntity.end_idx = mention.end_idx
+                let newSpan = createEntitySpan(selectedEntity)
+                span.replaceWith(newSpan)
             }
+        }else{
+            let span = document.getElementById(oldEntity.start_idx+":"+oldEntity.end_idx+":"+oldEntity.url)
+            selectedEntity.start_idx = oldEntity.start_idx
+            selectedEntity.end_idx = oldEntity.end_idx
+            let newSpan = createEntitySpan(selectedEntity)
+            span.replaceWith(newSpan)
         }
 
-        for(let currentEntitySpanId of currentEntitySpanIds){
-            let entitySpan = document.getElementById(currentEntitySpanId)
-            entitySpan.setAttribute("data-entity", JSON.stringify(selectedEntity))
-            entitySpan.setAttribute("href", newNode.id)
-            entitySpan.getElementsByClassName("entity-description")[0].remove()
-            entitySpan.appendChild(createEntityDescription(selectedEntity))
-        }
+        updateKG(oldEntity, selectedEntity)
+        kgVis.update(kg)
 
         document.getElementById("overlay-content").href = selectedEntityId
+        updateEntityChangePanel(selectedEntity)
+    }
+}
 
-        for(let triple of kg.triples){
-            if(triple.subject.url === currentEntityId){
-                triple.subject = selectedEntity
-            }
+function updateKG(oldEntity, newEntity){
+    let oldEntities = kg.entities.filter(e => e.url === oldEntity.url)
+    // clicked on node in vis
+    if ("mentions" in oldEntity){
+        if(newEntity === null){
+            kg.entities = kg.entities.filter(e => e.url !== oldEntity.url)
+        }else{
+            for(let entity of oldEntities){
+                entity.description = newEntity.description
+                entity.e_type = ""
+                entity.label = newEntity.label
+                entity.score = newEntity.score
+                entity.url = newEntity.url
 
-            if(triple.object.url === currentEntityId){
-                triple.object = selectedEntity
+                for(let mention of entity.mentions){
+                    mention.description = newEntity.description
+                    mention.e_type = ""
+                    mention.label = newEntity.label
+                    mention.score = newEntity.score
+                    mention.url = newEntity.url
+                }
+
+                for (let triple of kg.triples){
+                    if (triple.subject.url === oldEntity.url){
+                        triple.subject = entity
+                    }
+                    if (triple.object.url === oldEntity.url){
+                        triple.object = entity
+                    }
+                }
             }
         }
 
-        updateEntityChangePanel(selectedEntity)
+    } else{ //clicked on entity mention in editor
+        if(newEntity === null){
+            for(let entity of kg.entities){
+                entity.mentions = entity.mentions.filter(m => !(m.start_idx === oldEntity.start_idx && m.end_idx === oldEntity.end_idx))
+            }
+        }
+        else{
+            let newEntities = kg.entities.filter(e => e.url === newEntity.url)
+            if(newEntities.length > 0){
+                for(let entity of newEntities){
+                    let found = false
+                    for(let mention of entity.mentions){
+                        if(mention.start_idx === oldEntity.start_idx && mention.end_idx === oldEntity.end_idx){
+                            mention.description = newEntity.description
+                            mention.e_type = ""
+                            mention.label = newEntity.label
+                            mention.score = newEntity.score
+                            mention.url = newEntity.url
+                            found = true
+                        }
+                    }
+                }
+
+                for(let entity of oldEntities){
+                    entity.mentions = entity.mentions.filter(m => !(m.start_idx === oldEntity.start_idx && m.end_idx === oldEntity.end_idx))
+                }
+            } else{
+                let newUniqueEntity =  {
+                        description: newEntity.description,
+                        e_type: "",
+                        label: newEntity.label,
+                        score: newEntity.score,
+                        url: newEntity.url,
+                        mentions: [newEntity]
+                    }
+                kg.entities = kg.entities.concat([newUniqueEntity])
+
+                for(let entity of oldEntities){
+                    if(entity.mentions.length === 1){
+                        kg.entities = kg.entities.filter(e => !(e.url === oldEntity.url))
+
+                        for(let triple of kg.triples){
+                            if (triple.subject.url === entity.url){
+                                triple.subject = newUniqueEntity
+                            }
+                            if (triple.object.url === entity.url){
+                                triple.object = newUniqueEntity
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
+
+    kg.entity_mentions = []
+    for(let entity of kg.entities){
+        kg.entity_mentions =
+            kg.entity_mentions.concat(entity.mentions)
+    }
+    kg.entities = kg.entities.filter(e => e.mentions.length !== 0)
+    kg.triples = kg.triples.filter(function (t){
+        let sEntities = kg.entities.filter(e => e.url === t.subject.url)
+        let oEntities = kg.entities.filter(e => e.url === t.object.url)
+
+        return !(sEntities.length === 0 || oEntities.length === 0);
+    })
 }
 
 function onKgButtonClicked(e){
@@ -288,7 +396,12 @@ function onKgReceive(responseText){
     kgVis.draw(document.getElementById("kg-vis"))
 
     kgVis.getNetwork().on("hoverNode", function (e){
-        let entitySpans = document.querySelectorAll(".entity[href=\""+ e.node + "\"]")
+        let node = kgVis.getNodeById(e.node)
+        if(node === null){
+            return
+        }
+        let url = node.data_entity.url
+        let entitySpans = document.querySelectorAll(".entity[href=\""+ url + "\"]")
 
         for (let entitySpan of entitySpans){
             entitySpan.classList.add("highlight")
@@ -296,7 +409,12 @@ function onKgReceive(responseText){
     })
 
     kgVis.getNetwork().on("blurNode", function (e){
-        let entitySpans = document.querySelectorAll(".entity[href=\""+ e.node + "\"]")
+        let node = kgVis.getNodeById(e.node)
+        if(node === null){
+            return
+        }
+        let url = node.data_entity.url
+        let entitySpans = document.querySelectorAll(".entity[href=\""+ url + "\"]")
 
         for (let entitySpan of entitySpans){
             entitySpan.classList.remove("highlight")
@@ -305,11 +423,17 @@ function onKgReceive(responseText){
 
     kgVis.getNetwork().on("click", function (e){
         if(e.nodes.length > 0){
-            // let entitySpans = document.querySelectorAll(".entity[href=\""+ e.nodes[0]+"\"]")
-            let entity = e.nodes[0].data_entity
+            let node = kgVis.getNodeById(e.nodes[0])
+            let entity = node.data_entity
 
             drawEntityChangePanel(entity)
+
+            kgVis.getNetwork().unselectAll()
         }
+    })
+
+    kgVis.getNetwork().on("dragEnd", (opts) => {
+          kgVis.getNetwork().unselectAll()
     })
 
 }
@@ -361,21 +485,37 @@ function createEntitySpan(entity){
 
     entitySpan.addEventListener("mouseover", function (e){
         if (kgVis !== null){
-            let node = kgVis.getNodeById(e.target.getAttribute("href"))
-            if(node !== null){
-                node.color = getComputedStyle(document.documentElement).getPropertyValue("--highlight-color")
+            let nodes = kgVis.getNodeById(null)
+            let node = nodes.filter((n) => n.data_entity.url === e.target.getAttribute("href"))[0]
+
+            if(node !== undefined){
+                node.color = { background: getComputedStyle(document.documentElement).getPropertyValue("--highlight-color"),
+                highlight: getComputedStyle(document.documentElement).getPropertyValue("--highlight-color"),
+                hover: getComputedStyle(document.documentElement).getPropertyValue("--highlight-color")}
+
                 kgVis.updateNode(node)
             }
+        }
+
+        let entitySpans = document.querySelectorAll(".entity[href='" + e.target.getAttribute("href")+"']")
+        for(let span of entitySpans){
+            span.classList.add("highlight")
         }
     })
 
     entitySpan.addEventListener("mouseout", function (e){
         if (kgVis !== null){
-            let node = kgVis.getNodeById(e.target.getAttribute("href"))
-            if(node !== null){
+            let nodes = kgVis.getNodeById(null)
+            let node = nodes.filter((n) => n.data_entity.url === e.target.getAttribute("href"))[0]
+            if(node !== undefined){
                 node.color = getComputedStyle(document.documentElement).getPropertyValue("--default-color")
+
                 kgVis.updateNode(node)
             }
+        }
+
+        for(let span of $(".entity[href='" + e.target.getAttribute("href")+"']")){
+            span.classList.remove("highlight")
         }
     })
 
@@ -388,7 +528,7 @@ export function createEntityDescription(entity){
     entityDescription.setAttribute("contenteditable", false)
 
     let header = document.createElement("header")
-    if (entity.label === null){
+    if (entity.label === null || entity.label === undefined){
         header.innerText = entity.text
     }else{
         header.innerText = entity.label
@@ -515,122 +655,8 @@ function emptyKG(){
     return {
         text: document.getElementById("text-editor").innerText,
         entities: [],
+        entity_mentions: [],
         triples: []
-    }
-}
-
-function debugKG() {
-    return {
-        text: "The Bauhaus-Universität Weimar is a university located in Weimar, Germany.",
-        entities: [
-            {
-                    url: "http://www.wikidata.org/entity/Q573975",
-                    start_idx: 4,
-                    end_idx: 30,
-                    text: "Bauhaus-Universität Weimar",
-                    label: "Bauhaus-University Weimar",
-                    score: 1.0,
-                    description: "university"
-            },
-            {
-                    url: "http://www.wikidata.org/entity/Q3955",
-                    start_idx: 58,
-                    end_idx: 64,
-                    text: "Weimar",
-                    label: "Weimar",
-                    score: 1.0,
-                    description: "city in the federal state of Thuringia, Germany"
-            },
-            {
-                    url: "http://www.wikidata.org/entity/Q183",
-                    start_idx: 66,
-                    end_idx: 73,
-                    text: "Germany",
-                    label: "Germany",
-                    score: 1.0,
-                    description: "country in Central Europe"
-            }
-        ],
-        triples: [
-            {
-                subject: {
-                    url: "http://www.wikidata.org/entity/Q573975",
-                    start_idx: 4,
-                    end_idx: 30,
-                    text: "Bauhaus-Universität Weimar",
-                    label: "Bauhaus-University Weimar",
-                    score: 1.0,
-                    description: "university"
-                },
-                predicate: {
-                    url: "http://www.wikidata.org/prop/direct/P131",
-                    text: "located in the administrative territorial entity",
-                    label: "located in the administrative territorial entity",
-                    description: "the item is located on the territory of the following administrative entity. Use P276 for specifying locations that are non-administrative places and for items about events. Use P1382 if the item falls only partially into the administrative entity."
-                },
-                object: {
-                    url: "http://www.wikidata.org/entity/Q3955",
-                    start_idx: 58,
-                    end_idx: 64,
-                    text: "Weimar",
-                    label: "Weimar",
-                    score: 1.0,
-                    description: "city in the federal state of Thuringia, Germany"
-                }
-            },
-            {
-                subject: {
-                    url: "http://www.wikidata.org/entity/Q573975",
-                    start_idx: 4,
-                    end_idx: 30,
-                    text: "Bauhaus-Universität Weimar",
-                    label: "Bauhaus-University Weimar",
-                    score: 1.0,
-                    description: "university"
-                },
-                predicate: {
-                    url: "http://www.wikidata.org/prop/direct/P17",
-                    text: "country",
-                    label: "country",
-                    description: "sovereign state that this item is in (not to be used for human beings)"
-                },
-                object: {
-                    url: "http://www.wikidata.org/entity/Q183",
-                    start_idx: 66,
-                    end_idx: 73,
-                    text: "Germany",
-                    label: "Germany",
-                    score: 1.0,
-                    description: "country in Central Europe"
-                }
-            },
-            {
-                subject: {
-                    url: "http://www.wikidata.org/entity/Q3955",
-                    start_idx: 58,
-                    end_idx: 64,
-                    text: "Weimar",
-                    label: "Weimar",
-                    score: 1.0,
-                    description: "city in the federal state of Thuringia, Germany"
-                },
-                predicate: {
-                    url: "http://www.wikidata.org/prop/direct/P17",
-                    text: "country",
-                    label: "country",
-                    description: "sovereign state that this item is in (not to be used for human beings)"
-                },
-                object: {
-                    url: "http://www.wikidata.org/entity/Q183",
-                    start_idx: 66,
-                    end_idx: 73,
-                    text: "Germany",
-                    label: "Germany",
-                    score: 1.0,
-                    description: "country in Central Europe"
-                }
-            },
-        ]
     }
 }
 
