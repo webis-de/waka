@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 clean:
 	rm -rf venv
 
@@ -15,3 +17,7 @@ install_dep:
 install: install_dep install_venv
 
 all: install
+
+run:
+	export PYTHONPATH="$(pwd)/src"
+	source venv/bin/activate && python src/waka/service/backend/serve.py

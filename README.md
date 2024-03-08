@@ -13,8 +13,7 @@ make clean install
 ## Run server
 
 ```shell
-source venv/bin/activate
-export PYTHONPATH="src" && python waka/service/backend/serve.py
+make run
 ```
 
 After starting the server, WAKA will be available at: http://localhost:8000/static/index.html
