@@ -11,6 +11,7 @@ const entityCache = new Map()
 const exampleNS = "https://example.org/"
 const wakaNS ="https://waka.webis.de/"
 const rdfsNS = "http://www.w3.org/2000/01/rdf-schema#"
+const rdfNS = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 const schemaNS = "https://schema.org/"
 
 function main(){
@@ -678,29 +679,30 @@ function download(filename, text) {
 }
 
 function convertToRDF(kg){
-    let entityMap = new Map()
-
-    let rdfString = ""
+    let rdfStrings = new Set()
     for(let triple of kg.triples){
         if (triple.object.label === null){
-            rdfString += `<${triple.subject.url}> <${triple.predicate.url}> "${triple.object.url}" .\n`
+            rdfStrings.add(`<${triple.subject.url}> <${triple.predicate.url}> "${triple.object.url}" .`)
         }else{
-            rdfString += `<${triple.subject.url}> <${triple.predicate.url}> <${triple.object.url}> .\n`
-            if(!entityMap.has(triple.subject.url)){
-                entityMap.set(triple.subject.url, triple.subject)
-            }
-            if(!entityMap.has(triple.object.url)){
-                entityMap.set(triple.object.url, triple.object)
-            }
+            rdfStrings.add(`<${triple.subject.url}> <${triple.predicate.url}> <${triple.object.url}> .`)
         }
+
+        rdfStrings.add(`<${triple.predicate.url}> a <${rdfNS}Property> .`)
+        rdfStrings.add(`<${triple.predicate.url}> <${rdfsNS}label> "${triple.predicate.label}"@en .`)
+        rdfStrings.add(`<${triple.predicate.url}> <${schemaNS}description> "${triple.predicate.description}"@en .`)
     }
 
-    for(let entity of entityMap.values()){
-        rdfString += `<${entity.url}> <${rdfsNS}label> "${entity.label}"@en .\n`
-        rdfString += `<${entity.url}> <${schemaNS}description> "${entity.description}"@en .\n`
+    for(let entity of kg.entities){
+        rdfStrings.add(`<${entity.url}> <${rdfsNS}label> "${entity.label}"@en .`)
+        rdfStrings.add(`<${entity.url}> <${schemaNS}description> "${entity.description}"@en .`)
     }
 
-    rdfString += `<${exampleNS}kg> <${wakaNS}sourceText> "${kg.text}"@en .`
+    rdfStrings.add(`<${exampleNS}kg> <${wakaNS}sourceText> "${kg.text}"@en .`)
+
+    let rdfString = ""
+    for(let string of rdfStrings){
+        rdfString += string + "\n"
+    }
 
     return rdfString
 }

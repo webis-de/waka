@@ -117,6 +117,7 @@ export class KgVis{
             to: triple.object.url,
             label: triple.predicate.text,
             title: createEntityDescription(triple.predicate),
+            data_triple: triple,
             ...KgVis.#defaultEdgeOptions
         }
     }
