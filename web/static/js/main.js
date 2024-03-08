@@ -529,7 +529,11 @@ export function createEntityDescription(entity){
 
     let header = document.createElement("header")
     if (entity.label === null || entity.label === undefined){
-        header.innerText = entity.text
+        if("mentions" in entity){
+            header.innerText = entity.mentions[0].text
+        }else{
+            header.innerText = entity.text
+        }
     }else{
         header.innerText = entity.label
     }
