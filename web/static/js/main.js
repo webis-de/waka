@@ -7,6 +7,10 @@ let kgVis = null
 let kg = null
 
 const entityCache = new Map()
+const propertyCache = new Map()
+
+let relationMode = false
+let selectedEntities = []
 
 const exampleNS = "https://example.org/"
 const wakaNS ="https://waka.webis.de/"
@@ -20,14 +24,20 @@ function main(){
     let kgButton = document.getElementById("create-kg-button")
     kgButton.addEventListener("click", onKgButtonClicked)
 
-    let overlayCloseButton = document.getElementById("overlay-close")
-    overlayCloseButton.addEventListener("click", function (){
-        let overlay = document.getElementById("overlay-entity")
-        overlay.style.display = "none"
-    })
+    let overlayCloseButtons = document.getElementsByClassName("close")
+    for (let button of overlayCloseButtons){
+        button.addEventListener("click", function (){
+            let overlays = document.getElementsByClassName("overlay")
+            for(let overlay of overlays){
+                overlay.style.display = "none"
+            }
+        })
+    }
 
-    let overlay = document.getElementById("overlay-entity")
-    overlay.addEventListener("click",  onClick)
+    let overlays = document.getElementsByClassName("overlay")
+    for(let overlay of overlays){
+        overlay.addEventListener("click",  onClick)
+    }
 
     let saveButton = document.getElementById("save-button")
     saveButton.addEventListener("click", function (){
@@ -65,6 +75,7 @@ function main(){
             kg.entities = kg.entities.concat([
                 {
                     text: text,
+                    label: text,
                     url: exampleNS + encodeURIComponent(text),
                     description: "literal",
                     mentions: [entity]
@@ -75,9 +86,13 @@ function main(){
                 entity
             ])
 
+
             kgVis.update(kg)
 
-            container.replaceWith(document.createTextNode(currentHTML.substring(0, range.startOffset)), entitySpan, document.createTextNode(currentHTML.substring(range.endOffset)))
+            container.replaceWith(
+                document.createTextNode(currentHTML.substring(0, range.startOffset)),
+                entitySpan,
+                document.createTextNode(currentHTML.substring(range.endOffset)))
             drawEntityChangePanel(entity)
 
             selection.removeAllRanges()
@@ -86,7 +101,7 @@ function main(){
 
     let deleteEntityButton = document.getElementById("entity-delete")
     deleteEntityButton.addEventListener("click", function (){
-        let overlayContent = document.getElementById("overlay-content")
+        let overlayContent = document.getElementById("overlay-content-entity")
         let oldEntity = JSON.parse(overlayContent.getAttribute("data-entity"))
 
         updateKG(oldEntity, null)
@@ -106,6 +121,22 @@ function main(){
         overlay.style.display = "none"
     })
 
+    let deletePropertyButton = document.getElementById("property-delete")
+    deletePropertyButton.addEventListener("click", function (){
+        let overlayContent = document.getElementById("overlay-content-property")
+        let oldTriple = JSON.parse(overlayContent.getAttribute("data-triple"))
+
+        kg.triples = kg.triples.filter(t => !(
+                t.subject.url === oldTriple.subject.url &&
+                t.predicate.url === oldTriple.predicate.url &&
+                t.object.url === oldTriple.object.url
+        ))
+
+        kgVis.update(kg)
+        let overlay = document.getElementById("overlay-property")
+        overlay.style.display = "none"
+    })
+
     let overlayEntitySearchBox = document.getElementById("overlay-entity-search-box")
     overlayEntitySearchBox.addEventListener("keypress", function (e){
         if(e.key === 'Enter'){
@@ -114,6 +145,18 @@ function main(){
         "GET", "https://metareal-kb.web.webis.de/api/v1/kb/entity/search",
         {"q": entityName}, null, null,
         function (responseText) {onEntitySearchReceive(responseText, entityName)})
+            e.target.value = ""
+        }
+    })
+
+    let overlayPropertySearchBox = document.getElementById("overlay-property-search-box")
+    overlayPropertySearchBox.addEventListener("keypress", function (e){
+        if(e.key === 'Enter'){
+            let propertyName = e.target.value
+            requestBackend(
+        "GET", "https://metareal-kb.web.webis.de/api/v1/kb/property/search",
+        {"q": propertyName}, null, null,
+        function (responseText) {onPropertySearchReceive(responseText, propertyName)})
             e.target.value = ""
         }
     })
@@ -139,8 +182,10 @@ function main(){
 
     addEventListener("keydown", function (e){
         if(e.key === "Escape"){
-            let overlayCloseButton = document.getElementById("overlay-close")
-            overlayCloseButton.dispatchEvent(new Event("click"))
+            let overlayCloseButtons = document.getElementsByClassName("close")
+            for(let button of overlayCloseButtons){
+                button.dispatchEvent(new Event("click"))
+            }
         }
     })
 
@@ -163,74 +208,169 @@ function main(){
         }
     })
 
+    let editor = document.getElementById("text-editor")
+    const observer = new MutationObserver(() => {
+        if(editor.getElementsByClassName("entity").length > 1){
+            let relationButton = document.getElementById("add-relation-button")
+            relationButton.disabled = false
+        }
+    })
+
+    observer.observe(editor, {subtree: true, childList: true})
+
+
+    let relationButton = document.getElementById("add-relation-button")
+    relationButton.addEventListener("click", function (){
+        relationButton.disabled = true
+        relationMode = true
+    })
 
 }
 
 function onClick(e) {
     let target = e.target
 
-    if(target.className === ""){
-        return;
+    if(target.nodeName === "A"){
+        return
     }
-    let containerElems = document.querySelectorAll(".overlay-entity-container ." + target.className)
 
-    if(containerElems.length > 0){
-        if(target.className !== "overlay-entity-container"){
-            target = containerElems[0].closest(".overlay-entity-container")
-        }
+    if(target.className !== "overlay-entity-container"){
+        target = target.closest(".overlay-entity-container")
+    }
+
+    if(target === null){
+        return;
     }
 
     if(target.className === "overlay-entity-container"){
-        let overlayContent = document.getElementById("overlay-content")
-        let currentEntityId = overlayContent.href
-        let oldEntity = JSON.parse(overlayContent.getAttribute("data-entity"))
-
-        let selectedEntityId = target.getElementsByClassName("overlay-entity-link")[0].href
-
-        if(currentEntityId === selectedEntityId){
-            return
+        console.log(target)
+        if(document.getElementById("overlay-entity").contains(target)){
+            onEntityChange(target)
+        }else if(document.getElementById("overlay-property").contains(target)){
+            onPropertyChange(target)
         }
+    }
+}
 
-        let checkmarks = document.querySelectorAll(".checkmark.visible")
-        for(let checkmark of checkmarks){
-            checkmark.classList.remove("visible")
-            checkmark.classList.add("hidden")
-        }
+function onEntityChange(container){
+    let overlayContent = document.getElementById("overlay-content-entity")
+    let currentEntityId = overlayContent.href
+    let oldEntity = JSON.parse(overlayContent.getAttribute("data-entity"))
 
-        let newCheckmark = target.getElementsByClassName("checkmark")[0]
-        newCheckmark.classList.remove("hidden")
-        newCheckmark.classList.add("visible")
+    let selectedEntityId = container.getElementsByClassName("overlay-entity-link")[0].href
 
-        if (kgVis === null){
-            kgVis = new KgVis({triples: [], entities: []})
-            kgVis.draw(document.getElementById("kg-vis"))
-            kg = emptyKG()
-        }
-        let selectedEntity = entityCache.get(selectedEntityId)
+    if(currentEntityId === selectedEntityId){
+        return
+    }
+
+    let checkmarks = document.querySelectorAll(".checkmark.visible")
+    for(let checkmark of checkmarks){
+        checkmark.classList.remove("visible")
+        checkmark.classList.add("hidden")
+    }
+
+    let newCheckmark = container.getElementsByClassName("checkmark")[0]
+    newCheckmark.classList.remove("hidden")
+    newCheckmark.classList.add("visible")
+
+    if (kgVis === null){
+        kgVis = new KgVis({triples: [], entities: []})
+        kgVis.draw(document.getElementById("kg-vis"))
+        kg = emptyKG()
+    }
+    let selectedEntity = entityCache.get(selectedEntityId)
 
 
-        if("mentions" in oldEntity){
-            for(let mention of oldEntity.mentions){
-                let span = document.getElementById(mention.start_idx+":"+mention.end_idx+":"+mention.url)
-                selectedEntity.start_idx = mention.start_idx
-                selectedEntity.end_idx = mention.end_idx
-                let newSpan = createEntitySpan(selectedEntity)
-                span.replaceWith(newSpan)
-            }
-        }else{
-            let span = document.getElementById(oldEntity.start_idx+":"+oldEntity.end_idx+":"+oldEntity.url)
-            selectedEntity.start_idx = oldEntity.start_idx
-            selectedEntity.end_idx = oldEntity.end_idx
+    if("mentions" in oldEntity){
+        for(let mention of oldEntity.mentions){
+            let span = document.getElementById(mention.start_idx+":"+mention.end_idx+":"+mention.url)
+            selectedEntity.start_idx = mention.start_idx
+            selectedEntity.end_idx = mention.end_idx
             let newSpan = createEntitySpan(selectedEntity)
             span.replaceWith(newSpan)
         }
-
-        updateKG(oldEntity, selectedEntity)
-        kgVis.update(kg)
-
-        document.getElementById("overlay-content").href = selectedEntityId
-        updateEntityChangePanel(selectedEntity)
+    }else{
+        let span = document.getElementById(oldEntity.start_idx+":"+oldEntity.end_idx+":"+oldEntity.url)
+        selectedEntity.start_idx = oldEntity.start_idx
+        selectedEntity.end_idx = oldEntity.end_idx
+        let newSpan = createEntitySpan(selectedEntity)
+        span.replaceWith(newSpan)
     }
+
+    updateKG(oldEntity, selectedEntity)
+    kgVis.update(kg)
+
+
+    document.getElementById("overlay-content-entity").href = selectedEntityId
+    document.getElementById("overlay-content-entity").setAttribute("data-entity", JSON.stringify(selectedEntity))
+    updateEntityChangePanel(selectedEntity)
+}
+
+function onPropertyChange(container){
+    let overlayContent = document.getElementById("overlay-content-property")
+    let oldTriple = JSON.parse(overlayContent.getAttribute("data-triple"))
+
+    let selectedPropertyUrl = container.getElementsByClassName("overlay-entity-link")[0].href
+
+    if(oldTriple.predicate !== null) {
+        if (oldTriple.predicate.url === selectedPropertyUrl) {
+            return
+        }
+    }
+
+    let checkmarks = document.querySelectorAll(".checkmark.visible")
+    for(let checkmark of checkmarks){
+        checkmark.classList.remove("visible")
+        checkmark.classList.add("hidden")
+    }
+
+    let newCheckmark = container.getElementsByClassName("checkmark")[0]
+    newCheckmark.classList.remove("hidden")
+    newCheckmark.classList.add("visible")
+
+    if (kgVis === null){
+        kgVis = new KgVis({triples: [], entities: []})
+        kgVis.draw(document.getElementById("kg-vis"))
+        kg = emptyKG()
+    }
+    let selectedProperty = propertyCache.get(selectedPropertyUrl)
+    let newTriple
+
+    if(oldTriple.predicate === null){
+        newTriple = {
+            subject: oldTriple.subject,
+            predicate: {
+                description: selectedProperty.description,
+                label: selectedProperty.label,
+                url: selectedProperty.url,
+                text: selectedProperty.label
+            },
+            object: oldTriple.object
+        }
+        kg.triples.push(newTriple)
+    }else{
+        for(let triple of kg.triples){
+            if(triple.subject.url === oldTriple.subject.url &&
+               triple.predicate.url === oldTriple.predicate.url &&
+               triple.object.url === oldTriple.object.url){
+                triple.predicate = {
+                    description: selectedProperty.description,
+                    label: selectedProperty.label,
+                    url: selectedProperty.url,
+                    text: selectedProperty.label
+                }
+                newTriple = triple
+
+                break
+            }
+        }
+    }
+
+    kgVis.update(kg)
+
+    document.getElementById("overlay-content-property").href = selectedPropertyUrl
+    document.getElementById("overlay-content-property").setAttribute("data-triple", JSON.stringify(newTriple))
+    updatePropertyChangePanel(selectedProperty)
 }
 
 function updateKG(oldEntity, newEntity){
@@ -430,6 +570,12 @@ function onKgReceive(responseText){
             drawEntityChangePanel(entity)
 
             kgVis.getNetwork().unselectAll()
+        }else if(e.edges.length > 0){
+            let edge = kgVis.getEdgeById(e.edges[0])
+            let triple = edge.data_triple
+
+            drawPropertyChangePanel(triple)
+            kgVis.getNetwork().unselectAll()
         }
     })
 
@@ -454,17 +600,58 @@ function onEntitySearchReceive(responseText){
     let entityResultContainer = document.getElementById("overlay-entity-result-container")
     entityResultContainer.innerHTML = ""
 
+    let propertyResultContainer = document.getElementById("overlay-property-result-container")
+    propertyResultContainer.innerHTML = ""
+
     fetch("/static/templates/entity-change.mustache")
         .then((response) => response.text())
         .then((template) => {
             entityResultContainer.innerHTML = mustache.render(template, {"entities": data})
         }).then(() => {
-            let entityId = document.getElementById("overlay-content").href
+            let entityId = document.getElementById("overlay-content-entity").href
             let entityContainer = entityResultContainer.querySelectorAll(".overlay-entity-container[data-id=\"" + entityId + "\"]")
             if(entityContainer.length > 0){
                 let checkmark = entityContainer[0].getElementsByClassName("checkmark")
                 checkmark[0].classList.remove("hidden")
                 checkmark[0].classList.add("visible")
+            }
+
+            for(let entityContainer of document.getElementsByClassName("overlay-entity-container")){
+                entityContainer.addEventListener("click", onClick)
+            }
+        })
+}
+
+function onPropertySearchReceive(responseText){
+    let data = JSON.parse(responseText)["data"]
+
+    propertyCache.clear()
+    for (let property of data){
+        property.url = property.id
+        propertyCache.set(property.id, property)
+    }
+
+    let entityResultContainer = document.getElementById("overlay-entity-result-container")
+    entityResultContainer.innerHTML = ""
+
+    let propertyResultContainer = document.getElementById("overlay-property-result-container")
+    propertyResultContainer.innerHTML = ""
+
+    fetch("/static/templates/entity-change.mustache")
+        .then((response) => response.text())
+        .then((template) => {
+            propertyResultContainer.innerHTML = mustache.render(template, {"entities": data})
+        }).then(() => {
+            let propertyId = document.getElementById("overlay-content-property").href
+            let propertyContainer = propertyResultContainer.querySelectorAll(".overlay-entity-container[data-id=\"" + propertyId + "\"]")
+            if(propertyContainer.length > 0){
+                let checkmark = propertyContainer[0].getElementsByClassName("checkmark")
+                checkmark[0].classList.remove("hidden")
+                checkmark[0].classList.add("visible")
+            }
+
+            for(let entityContainer of document.getElementsByClassName("overlay-entity-container")){
+                entityContainer.addEventListener("click", onClick)
             }
         })
 }
@@ -480,8 +667,27 @@ function createEntitySpan(entity){
     entitySpan.appendChild(createEntityDescription(entity))
 
     entitySpan.addEventListener("click", function (e){
-        let entity = e.target.getAttribute("data-entity")
-        drawEntityChangePanel(JSON.parse(entity))
+        let entity = JSON.parse(e.target.getAttribute("data-entity"))
+
+        if(relationMode){
+            let unique_entity = kg.entities.filter(e => e.url === entity.url)[0]
+            selectedEntities.push(unique_entity)
+
+            if(selectedEntities.length === 2){
+                let newTriple = {
+                    subject: selectedEntities[0],
+                    predicate: null,
+                    object: selectedEntities[1]
+                }
+                drawPropertyChangePanel(newTriple)
+                let relationButton = document.getElementById("add-relation-button")
+                relationButton.disabled = false
+                selectedEntities = []
+                relationMode = false
+            }
+        }else{
+            drawEntityChangePanel(entity)
+        }
     })
 
     entitySpan.addEventListener("mouseover", function (e){
@@ -570,7 +776,7 @@ function drawEntityChangePanel(entity){
     let overlay = document.getElementById("overlay-entity")
     overlay.style.display = "flex"
 
-    let overlayContent = document.getElementById("overlay-content")
+    let overlayContent = document.getElementById("overlay-content-entity")
     overlayContent.href = entity.url
     overlayContent.setAttribute("data-entity", JSON.stringify(entity))
 
@@ -596,6 +802,54 @@ function drawEntityChangePanel(entity){
         function (responseText) {onEntitySearchReceive(responseText, entityName)})
 }
 
+function drawPropertyChangePanel(triple){
+    let overlay = document.getElementById("overlay-property")
+    overlay.style.display = "flex"
+
+    let overlayContent = document.getElementById("overlay-content-property")
+    if(triple.predicate !== null){
+        overlayContent.href = triple.predicate.url
+    }
+
+    overlayContent.setAttribute("data-triple", JSON.stringify(triple))
+
+    let entitySubject = document.getElementById("overlay-property-subject")
+    if (triple.subject.label === null || triple.subject.label === undefined){
+        entitySubject.innerText = triple.subject.mentions[0].text
+    }else{
+        entitySubject.innerText = triple.subject.label
+    }
+
+    let propertyLabel = document.getElementById("overlay-property-label")
+    let propertyName = null
+    if (triple.predicate === null || triple.predicate === undefined){
+        propertyLabel.innerText = undefined
+    }else{
+        propertyName = triple.predicate.label
+        propertyLabel.innerText = propertyName
+        let propertyDescription = document.getElementById("overlay-property-description")
+        propertyDescription.innerText = triple.predicate.description
+    }
+
+    let entityObject = document.getElementById("overlay-property-object")
+    if (triple.object.label === null || triple.object.label === undefined){
+        entityObject.innerText = triple.object.mentions[0].text
+    }else{
+        entityObject.innerText = triple.object.label
+    }
+
+    let entityResultContainer = document.getElementById("overlay-property-result-container")
+    entityResultContainer.innerHTML = ""
+
+    if(propertyName !== null){
+        requestBackend(
+        "GET", "https://metareal-kb.web.webis.de/api/v1/kb/property/search",
+        {"q": propertyName}, null, null,
+        function (responseText) {onPropertySearchReceive(responseText, propertyName)})
+    }
+
+}
+
 function updateEntityChangePanel(entity){
     let entityName
     if(entity.label !== null){
@@ -617,6 +871,14 @@ function updateEntityChangePanel(entity){
     } else{
         entityDescription.innerText = "literal"
     }
+}
+
+function updatePropertyChangePanel(predicate){
+    let propertyLabel = document.getElementById("overlay-property-label")
+    propertyLabel.innerText = predicate.label
+
+    let propertyDescription = document.getElementById("overlay-property-description")
+    propertyDescription.innerText = predicate.description
 }
 
 function requestBackend(method, url, params, header, data, callback){

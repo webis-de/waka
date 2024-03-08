@@ -111,6 +111,10 @@ export class KgVis{
     }
 
     static createEdgeFromTriple(triple) {
+        if(triple.id_ === undefined){
+            triple.id_ = KgVis.hashCode(`${triple.subject.url}:${triple.predicate.url}:${triple.object.url}`)
+        }
+
         return {
             id: triple.id_,
             from: triple.subject.url,
@@ -133,10 +137,18 @@ export class KgVis{
         this.#network.on("stabilizationIterationsDone", function (){
             _self.#network.setOptions({physics: {enabled: false}})
         })
+
+        if(this.#nodes.length === 0 && this.#edges.length === 0){
+            this.#network.setOptions({physics: {enabled: false}})
+        }
     }
 
     getNodeById(id){
         return this.#nodes.get(id)
+    }
+
+    getEdgeById(id){
+        return this.#edges.get(id)
     }
 
     getNetwork(){
@@ -162,9 +174,29 @@ export class KgVis{
         for(let triple of kg.triples){
             this.#edges.update(KgVis.createEdgeFromTriple(triple))
         }
+        this.#edges.forEach(function (edge){
+            if(kg.triples.filter(t =>
+                t.subject.url === edge.data_triple.subject.url &&
+                t.predicate.url === edge.data_triple.predicate.url &&
+                t.object.url === edge.data_triple.object.url
+            ).length === 0){
+                _this.#edges.remove(edge.id)
+            }
+        })
     }
 
     removeNode(node){
         this.#nodes.remove(node.id)
+    }
+
+    static hashCode(string) {
+        let hash = 0, i, chr;
+        if (string.length === 0) return hash;
+        for (i = 0; i < string.length; i++) {
+            chr = string.charCodeAt(i);
+            hash = ((hash << 5) - hash) + chr;
+            hash |= 0; // Convert to 32bit integer
+        }
+        return hash;
     }
 }

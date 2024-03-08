@@ -8,17 +8,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <script type="text/javascript" src="https://requirejs.org/docs/release/2.3.5/minified/require.js"></script>
     <script src="https://kit.fontawesome.com/484862e201.js" crossorigin="anonymous"></script>
     <script type="module" src="js/main.js"></script>
 </head>
 <body>
 <div id="content-wrapper">
     <div id="overlay-entity" class="overlay">
-        <div id="overlay-content">
-            <button id="entity-delete"><i class="fa-solid fa-trash-can fa-xl"></i></button>
+        <div id="overlay-content-entity" class="overlay-content">
+            <button id="entity-delete" class="delete"><i class="fa-solid fa-trash-can fa-xl"></i></button>
             <button id="overlay-close" class="close" type="button"><i class="fa-solid fa-x fa-xl"></i></button>
-            <h1 id="overlay-entity-heading" class="overlay-entity-label">
+            <h1 id="overlay-entity-heading" class="overlay-label">
                 <span id="overlay-entity-text-span">
                 </span>
                 <i class="fa-solid fa-arrow-right fa-lg"></i>
@@ -26,26 +25,27 @@
             </h1>
             <h2 id="overlay-entity-description"></h2>
 
-            <input id="overlay-entity-search-box" type="text" placeholder="Search for entities">
-            <div id="overlay-entity-result-container">
+            <input id="overlay-entity-search-box" class="overlay-search-box" type="text" placeholder="Search for entities">
+            <div id="overlay-entity-result-container" class="overlay-result-container">
             </div>
         </div>
     </div>
 
     <div id="overlay-property" class="overlay">
-        <div id="overlay-content-property">
-            <button id="property-delete"><i class="fa-solid fa-trash-can fa-xl"></i></button>
+        <div id="overlay-content-property" class="overlay-content">
+            <button id="property-delete" class="delete"><i class="fa-solid fa-trash-can fa-xl"></i></button>
             <button id="overlay-property-close" class="close" type="button"><i class="fa-solid fa-x fa-xl"></i></button>
-            <h1 id="overlay-property-heading" class="overlay-entity-label">
-                <span id="overlay-property-text-span">
-                </span>
+            <h1 id="overlay-property-heading" class="overlay-label">
+                <span id="overlay-property-subject" class="overlay-property-entity"></span>
                 <i class="fa-solid fa-arrow-right fa-lg"></i>
                 <span id="overlay-property-label"></span>
+                <i class="fa-solid fa-arrow-right fa-lg"></i>
+                <span id="overlay-property-object" class="overlay-property-entity"></span>
             </h1>
             <h2 id="overlay-property-description"></h2>
 
-            <input id="overlay-property-search-box" type="text" placeholder="Search for properties">
-            <div id="overlay-property-result-container">
+            <input id="overlay-property-search-box" class="overlay-search-box" type="text" placeholder="Search for properties">
+            <div id="overlay-property-result-container" class="overlay-result-container">
             </div>
         </div>
     </div>
@@ -73,11 +73,16 @@
                 </div>
                 <div id="text-editor-toolbar">
 
-                    <button id="create-kg-button">
-                        <i id="graph-icon" class="fa-solid fa-diagram-project"></i>
-                        <i id="loading-icon" class="fa-solid fa-spinner fa-spin fa-lg" ></i>
-                        Graph
-                    </button>
+                    <div id="graph-buttons">
+                        <button id="create-kg-button">
+                            <i id="graph-icon" class="fa-solid fa-diagram-project"></i>
+                            <i id="loading-icon" class="fa-solid fa-spinner fa-spin fa-lg" ></i>
+                            Graph
+                        </button>
+                        <button id="add-relation-button" disabled>
+                        + Relation
+                        </button>
+                    </div>
 
                     <button id="save-button" disabled>
                         <i class="fa-solid fa-download"></i>
