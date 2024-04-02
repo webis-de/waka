@@ -19,5 +19,4 @@ install: install_dep install_venv
 all: install
 
 run:
-	export PYTHONPATH="$(pwd)/src"
-	source venv/bin/activate && python src/waka/service/backend/serve.py
+	export PYTHONPATH="$(shell pwd)/src" && source venv/bin/activate && python src/waka/service/backend/serve.py
