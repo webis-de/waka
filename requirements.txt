@@ -8,8 +8,6 @@ transformers==4.31.0
 torch~=2.0.1
 databind==4.4.0
 stanford_openie
-# allennlp
-# allennlp-models
 elasticsearch==7.17.9
 pyyaml==6.0.1
 nltk~=3.8.1
@@ -21,8 +19,8 @@ aiohttp
 flair
 number-parser
 sentence-transformers==2.2.2
-# huggingface_hub
 nest-asyncio==1.5.8
 pycountry
 click
 levenshtein
+scipy<1.13

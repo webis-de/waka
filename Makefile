@@ -10,6 +10,7 @@ install_venv:
 	. venv/bin/activate; pip install --no-cache-dir -r requirements.txt
 	. venv/bin/activate; python -m spacy download en_core_web_sm
 	. venv/bin/activate; python -c "import stanza; stanza.download('en')"
+	. venv/bin/activate; python -c "import nltk; nltk.download('punkt')"
 
 install_dep:
 	sudo apt install libpq-dev libfreetype-dev libpng-dev
