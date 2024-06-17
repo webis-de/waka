@@ -124,33 +124,29 @@ class MRebelExtractor(RelationExtractor):
             "forced_bos_token_id": None,
         }
 
-        # self.extractor = pipeline('translation_xx_to_yy',
-        #                           model='Babelscape/mrebel-large',
-        #                           tokenizer='Babelscape/mrebel-large',
-        #                           device="cuda")
-
     def process(self, text: str, in_data: str) -> Optional[List[EntityMention | Triple]]:
         super().process(text, in_data)
         triples = []
         triple_hashes = set()
 
-        for sentence in sent_tokenize(text):
-            model_inputs = self.tokenizer(sentence, max_length=512, padding=True, truncation=True, return_tensors='pt')
-            generated_tokens = self.model.generate(
-                model_inputs["input_ids"].to(self.model.device),
-                attention_mask=model_inputs["attention_mask"].to(self.model.device),
-                decoder_start_token_id=self.tokenizer.convert_tokens_to_ids("tp_XX"),
-                **self.gen_kwargs,
-            )
+        sentences = [s for s in sent_tokenize(text)]
 
-            decoded_preds = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=False)
+        model_inputs = self.tokenizer(sentences, max_length=512, padding=True, truncation=True, return_tensors='pt')
+        generated_tokens = self.model.generate(
+            model_inputs["input_ids"].to(self.model.device),
+            attention_mask=model_inputs["attention_mask"].to(self.model.device),
+            decoder_start_token_id=self.tokenizer.convert_tokens_to_ids("tp_XX"),
+            **self.gen_kwargs,
+        )
 
-            for token_string in decoded_preds:
-                for triple in self.extract_triplets(token_string, text):
-                    triple_hash = hash(f"{triple.subject.text}:{triple.predicate.text}:{triple.object.text}")
-                    if triple_hash not in triple_hashes:
-                        triple_hashes.add(triple_hash)
-                        triples.append(triple)
+        decoded_preds = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=False)
+
+        for token_string in decoded_preds:
+            for triple in self.extract_triplets(token_string, text):
+                triple_hash = hash(f"{triple.subject.text}:{triple.predicate.text}:{triple.object.text}")
+                if triple_hash not in triple_hashes:
+                    triple_hashes.add(triple_hash)
+                    triples.append(triple)
 
         return triples
 

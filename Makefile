@@ -1,7 +1,14 @@
 SHELL := /bin/bash
 
+VERSION=$(shell cat config.json | jq .version | tr -d '"')
+
 clean:
 	rm -rf venv
+
+docker:
+	docker build -t registry.webis.de/code-research/conversational-search/assisted-knowledge-graph-authoring:latest -t registry.webis.de/code-research/conversational-search/assisted-knowledge-graph-authoring:$(VERSION) .
+	docker push registry.webis.de/code-research/conversational-search/assisted-knowledge-graph-authoring:latest
+	docker push registry.webis.de/code-research/conversational-search/assisted-knowledge-graph-authoring:$(VERSION)
 
 install_venv:
 	python3 -m venv venv

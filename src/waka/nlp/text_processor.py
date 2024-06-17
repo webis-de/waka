@@ -17,7 +17,7 @@ class TextProcessor(Generic[IN, OUT], metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def process(self, text: str, in_data: IN) -> Optional[List[OUT]]:
-        self.logger.debug(f"Process \"{in_data}\"")
+        # self.logger.debug(f"Process \"{in_data}\"")
         return None
 
 

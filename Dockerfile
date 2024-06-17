@@ -7,13 +7,15 @@ ENV DEBIAN_FRONTEND=noninteractive TZ="Europe/Berlin"
 
 COPY src/ /waka/src/
 COPY web/ /waka/web/
-COPY Makefile requirements.txt /waka/
+COPY Makefile requirements.txt config.json /waka/
 
 WORKDIR /waka/
 
-RUN apt update && apt install -y libpq-dev libfreetype-dev libpng-dev git-lfs
+RUN apt update && apt install -y libpq-dev libfreetype-dev libpng-dev git-lfs && git lfs install
 RUN make clean install_venv
-RUN make load_models
+RUN git -C models/mrebel-large pull || git clone https://huggingface.co/Babelscape/mrebel-large/ models/mrebel-large
+RUN git -C models/bart-large-mnli pull || git clone https://huggingface.co/facebook/bart-large-mnli models/bart-large-mnli
+RUN git -C models/all-distilroberta-v1 pull || git clone https://huggingface.co/sentence-transformers/all-distilroberta-v1 models/all-distilroberta-v1
 
 EXPOSE 8000
 

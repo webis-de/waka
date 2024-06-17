@@ -1,3 +1,4 @@
+import json
 import multiprocessing
 
 import uvicorn
@@ -16,10 +17,11 @@ class Text(BaseModel):
 
 
 def app():
+    with open("config.json", "r") as f:
+        config = json.load(f)
+
     app = FastAPI(
-        title="WAKA",
-        description="Backend of the WAKA Assisted Knowledge Graph Authoring System",
-        version="1.0.1",
+        **config,
         openapi_url="/api/v1/openapi.json")
 
     app.add_middleware(
@@ -56,6 +58,9 @@ class KGConstructionRouter(APIRouter):
                            methods=["GET"])
 
     async def create_kg(self, text: Text) -> KnowledgeGraph:
+        if len(text.content.strip()) == 0:
+            return KnowledgeGraph(text.content, [], [], [])
+
         return self.kg_construct.construct(text.content)
 
 

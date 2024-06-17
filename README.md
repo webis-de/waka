@@ -1,6 +1,7 @@
 # WAKA: Webis Assisted Knowledge Graph Authoring
 
-![Static Badge](https://img.shields.io/badge/version-1.0.1-blue) ![Website](https://img.shields.io/website?url=https%3A%2F%2Fwaka.webis.de%2Fstatic%2Findex.html) ![Website](https://img.shields.io/website?url=https%3A%2F%2Fwaka.webis.de%2Fapi%2Fv1%2Fopenapi.json&label=api)
+![Dynamic JSON Badge](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fwebis-de%2Fwaka%2Fmain%2Fconfig.json&query=%24.version&color=blue)
+ ![Website](https://img.shields.io/website?url=https%3A%2F%2Fwaka.webis.de%2Fstatic%2Findex.html) ![Website](https://img.shields.io/website?url=https%3A%2F%2Fwaka.webis.de%2Fapi%2Fv1%2Fopenapi.json&label=api)
 
 
 
