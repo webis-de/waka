@@ -11,7 +11,9 @@ COPY Makefile requirements.txt /waka/
 
 WORKDIR /waka/
 
-RUN apt update && apt install -y libpq-dev libfreetype-dev libpng-dev && make clean install_venv
+RUN apt update && apt install -y libpq-dev libfreetype-dev libpng-dev git-lfs
+RUN make clean install_venv
+RUN make load_models
 
 EXPOSE 8000
 

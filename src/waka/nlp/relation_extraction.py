@@ -108,11 +108,12 @@ class MRebelExtractor(RelationExtractor):
     def __init__(self):
         super().__init__()
         self.tokenizer = AutoTokenizer.from_pretrained(
-            "Babelscape/mrebel-large",
+            "models/mrebel-large",
+            local_files_only=True,
             src_lang="en_XX",
             tgt_lang="tp_XX")
 
-        self.model = AutoModelForSeq2SeqLM.from_pretrained("Babelscape/mrebel-large")
+        self.model = AutoModelForSeq2SeqLM.from_pretrained("models/mrebel-large", local_files_only=True,)
         self.model.to("cuda")
 
         self.gen_kwargs = {

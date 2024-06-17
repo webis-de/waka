@@ -143,8 +143,8 @@ class EntityScorer(TextProcessor[List[LinkedEntity], List[UniqueEntity]], metacl
 class BartMNLI(TripleScorer):
     def __init__(self):
         super().__init__()
-        self.nli_model = AutoModelForSequenceClassification.from_pretrained('facebook/bart-large-mnli')
-        self.tokenizer = AutoTokenizer.from_pretrained('facebook/bart-large-mnli')
+        self.nli_model = AutoModelForSequenceClassification.from_pretrained('models/bart-large-mnli', local_files_only=True)
+        self.tokenizer = AutoTokenizer.from_pretrained('models/bart-large-mnli', local_files_only=True)
         # self.nli_model = AutoModelForSequenceClassification.from_pretrained('MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli')
         # self.tokenizer = AutoTokenizer.from_pretrained('MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli')
         self.classifier = pipeline("zero-shot-classification", model=self.nli_model, tokenizer=self.tokenizer,
@@ -176,7 +176,7 @@ class EntitySentenceBert(EntityScorer):
 
     def __init__(self):
         super().__init__()
-        self.sentence_transformer = SentenceTransformer("all-distilroberta-v1", device="cuda")
+        self.sentence_transformer = SentenceTransformer("models/all-distilroberta-v1", device="cuda")
 
     def score(self, text: str, entities: List[LinkedEntity]) -> List[LinkedEntity]:
         sentence_spans = PunktSentenceTokenizer().span_tokenize(text)
