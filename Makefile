@@ -19,6 +19,14 @@ install_venv:
 	. venv/bin/activate; python -c "import stanza; stanza.download('en')"
 	. venv/bin/activate; python -c "import nltk; nltk.download('punkt')"
 
+install_novenv:
+	python3 -m pip install --upgrade pip
+	python3 -m pip install --upgrade setuptools wheel
+	python3 -m pip install --no-cache-dir -r requirements.txt
+	python3 -m spacy download en_core_web_sm
+	python3 -c "import stanza; stanza.download('en')"
+	python3 -c "import nltk; nltk.download('punkt')"
+
 install_dep:
 	sudo apt install libpq-dev libfreetype-dev libpng-dev git-lfs
 
@@ -34,3 +42,6 @@ all: install
 
 run:
 	export PYTHONPATH="$(shell pwd)/src" && source venv/bin/activate && python src/waka/service/backend/serve.py
+
+run_novenv:
+	export PYTHONPATH="$(shell pwd)/src" && python3 src/waka/service/backend/serve.py
