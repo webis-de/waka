@@ -1,11 +1,11 @@
 import abc
-import asyncio
 import copy
+import os
+import re
+import sys
 from typing import List
 
-import aiohttp
-import pycountry
-from cachetools import LRUCache
+from elasticsearch import Elasticsearch, AuthenticationException
 
 from waka.nlp.kg import EntityMention, LinkedEntity
 from waka.nlp.text_processor import TextProcessor
@@ -16,100 +16,119 @@ class EntityLinker(TextProcessor[List[EntityMention], List[LinkedEntity]], metac
 
 
 class ElasticEntityLinker(EntityLinker):
-    def __init__(self):
+    def __init__(self, alpha=3, beta=0.2, min_score=20.0, max_results=20):
         super().__init__()
-        self.search_endpoint = "https://metareal-kb.web.webis.de/api/v1/kb/entity/search"
-        self.cache = LRUCache(4096)
+        self.index_name = "corpus_wikidata_20240717"
+
+        api_key = os.getenv("ES_API_KEY")
+        if api_key is None or api_key == "":
+            self.logger.error("Elasticsearch API key (ES_API_KEY) not set!")
+            sys.exit(1)
+
+        try:
+            self.es_client = Elasticsearch("https://elasticsearch.srv.webis.de", api_key=api_key,
+                                           retry_on_timeout=True, max_retries=10)
+        except AuthenticationException:
+            self.logger.error("Authentication to Elasticsearch failed!")
+            sys.exit(1)
+
+        self.search_template = {
+            "query": {
+                "function_score": {
+                    "query": {
+                        "query_string": {
+                            "query": None,
+                            "default_operator": "AND",
+                            "fields": [f"label^{alpha}", "search_key"],
+                            "type": "best_fields"
+                        }
+                    },
+                    "field_value_factor": {
+                        "field": "frequency",
+                        "factor": beta,
+                        "missing": 1.0,
+                        "modifier": "log1p"
+                    }
+                }
+            },
+            "from": 0,
+            "size": max_results,
+            "min_score": min_score
+        }
 
     def process(self, text: str, in_data: List[EntityMention]) -> List[LinkedEntity]:
         super().process(text, in_data)
-        request_entities = []
         linked_entities = []
+        searched_entities = []
+        searches = []
 
         for entity in in_data:
-            if entity.text in self.cache:
-                linked_entities.extend(copy.deepcopy(self.cache[entity.text]))
+            if entity.url is not None:
+                linked_entities.append(LinkedEntity(
+                    text=entity.text,
+                    url=entity.url,
+                    start_idx=entity.start_idx,
+                    end_idx=entity.end_idx,
+                    e_type=entity.e_type,
+                    label=None,
+                    score=1.0,
+                    description=None
+                ))
             else:
-                if entity.url is not None:
-                    linked_entities.append(LinkedEntity(
-                        text=entity.text,
-                        url=entity.url,
-                        start_idx=entity.start_idx,
-                        end_idx=entity.end_idx,
-                        e_type=entity.e_type,
-                        label=None,
-                        score=1.0,
-                        description=None
-                    ))
+                searched_entities.append(entity)
+                searches.append({"index": self.index_name})
+                search = copy.deepcopy(self.search_template)
+                search["query"]["function_score"]["query"]["query_string"]["query"] = (
+                    self.get_query(entity))
+                searches.append(search)
+
+        results = self.es_client.msearch(searches=searches)
+
+        for response, entity in zip(results["responses"], searched_entities):
+            if response["status"] != 200:
+                continue
+
+            for hit in response["hits"]["hits"]:
+                if "label" not in hit["_source"]:
+                    continue
+
+                try:
+                    if hit["_source"]["label"].lower().startswith('category:'):
+                        continue
+                except AttributeError:
+                    pass
+
+                if "description" not in hit["_source"]:
+                    description = ""
                 else:
-                    request_entities.append(entity)
+                    description = hit["_source"]["description"]
 
-        results = asyncio.run(self.send_all(request_entities))
-
-        if isinstance(results, List):
-            for result in results:
-                if not isinstance(result, List):
-                    print(result)
-
-                # if len(result) > 0:
-                #     self.cache[result[0].text] = copy.deepcopy(result)
-
-                linked_entities.extend(result)
-        else:
-            self.logger.error(results)
+                linked_entities.append(LinkedEntity(
+                    url=hit["_id"],
+                    start_idx=entity.start_idx,
+                    end_idx=entity.end_idx,
+                    text=entity.text,
+                    label=hit["_source"]["label"],
+                    score=hit["_score"] / 305,
+                    e_type=entity.e_type,
+                    description=description))
 
         return list(set(linked_entities))
 
-    async def send_all(self, entities: List[EntityMention]) -> tuple[BaseException | List[List[LinkedEntity]]]:
-        results = []
-        async with aiohttp.ClientSession() as session:
-            for entity in entities:
-                results.append(self.send_request(session, entity))
-
-            results = await asyncio.gather(*results, return_exceptions=True)
-
-        return results
-
-    async def send_request(self, session: aiohttp.ClientSession, entity: EntityMention) -> List[LinkedEntity]:
-        retrieved_entities = []
+    @staticmethod
+    def get_query(entity: EntityMention):
         queries = []
-        try:
-            queries.extend([c.name for c in pycountry.countries.search_fuzzy(entity.text)])
-            if len(queries) > 3:
-                queries.clear()
-        except LookupError:
-            pass
+        # try:
+        #     queries.extend([c.name for c in pycountry.countries.search_fuzzy(entity.text)])
+        #     if len(queries) > 3:
+        #         queries = []
+        # except LookupError:
+        #     pass
 
         queries.extend([x.strip() for x in entity.text.split(",")])
         if entity.text.replace("'s", "") != entity.text:
             queries.append(entity.text.replace("'s", ""))
 
-        for query in queries:
-            async with session.get(self.search_endpoint, params={"q": query}) as response:
-                body = await response.json()
-
-                if body["status"] == "success":
-                    for e in body["data"]:
-                        try:
-                            if e["label"].lower().startswith('category:'):
-                                continue
-                        except AttributeError:
-                            pass
-
-                        retrieved_entities.append(LinkedEntity(
-                            url=e["id"],
-                            start_idx=entity.start_idx,
-                            end_idx=entity.end_idx,
-                            text=entity.text,
-                            label=e["label"],
-                            score=e["score"] / 305,
-                            e_type=entity.e_type,
-                            description=e["description"]))
-
-        # scores = torch.tensor([e.score for e in retrieved_entities], dtype=torch.float32)
-        # scores = torch.softmax(scores, dim=0)
-        #
-        # for entity, score in zip(retrieved_entities, scores):
-        #     entity.score = score.item()
-
-        return retrieved_entities
+        return " || ".join(map(lambda q: re.sub(
+            '(\+|\-|\=|&&|\|\||\>|\<|\!|\(|\)|\{|\}|\[|\]|\^|"|~|\*|\?|\:|\\\|\/)',
+            "\\\\\\1", q), queries))

@@ -71,7 +71,7 @@ class SpacyNER(EntityRecognizer):
 
     def __init__(self):
         super().__init__()
-        self.nlp = spacy.load("en_core_web_sm")
+        self.nlp = spacy.load("en_core_web_trf")
 
     def process(self, text: str, in_data: str) -> List[EntityMention]:
         super().process(text, in_data)
