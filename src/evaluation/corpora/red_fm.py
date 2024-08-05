@@ -7,8 +7,8 @@ from waka.nlp.kg import KnowledgeGraph, Property, Triple, LinkedEntity
 
 
 class RedFM(CorpusParser):
-    def __init__(self):
-        super().__init__("/mnt/ssd2/corpora/corpora-thirdparty/corpus-redfm", test=True, dev=False)
+    def __init__(self, train=False, test=True, dev=False):
+        super().__init__("/mnt/ssd2/corpora/corpora-thirdparty/corpus-redfm", train=train, test=test, dev=dev)
 
         files = []
 
