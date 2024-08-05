@@ -124,8 +124,15 @@ class KGFactory:
                     emj = mention_copy[j]
 
                     if emi.overlaps_with(emj):
-                        dist_i = distance(emi.label, emi.text)
-                        dist_j = distance(emj.label, emj.text)
+                        if emi.label is None:
+                            dist_i = distance("", emi.text)
+                        else:
+                            dist_i = distance(emi.label, emi.text)
+
+                        if emj.label is None:
+                            dist_j = distance("", emj.text)
+                        else:
+                            dist_j = distance(emj.label, emj.text)
 
                         if dist_i > dist_j:
                             entity.mentions = [e for e in entity.mentions if e is not emi]
@@ -151,8 +158,12 @@ class KGFactory:
 
     @staticmethod
     def _get_conflict_score(entity, mention):
-        dist = distance(entity.label, mention.text)
-        dist_score = 1 - (dist / max(len(entity.label), len(mention.text)))
+        if entity.label is None:
+            dist = distance("", mention.text)
+            dist_score = 1 - (dist / max(len(""), len(mention.text)))
+        else:
+            dist = distance(entity.label, mention.text)
+            dist_score = 1 - (dist / max(len(entity.label), len(mention.text)))
         num_mentions = 1 / len(entity.mentions)
         length_score = len(mention.text)
 

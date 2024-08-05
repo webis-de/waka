@@ -5,6 +5,7 @@ import re
 import sys
 from typing import List
 
+import pycountry
 from elasticsearch import Elasticsearch, AuthenticationException
 
 from waka.nlp.kg import EntityMention, LinkedEntity
@@ -16,7 +17,7 @@ class EntityLinker(TextProcessor[List[EntityMention], List[LinkedEntity]], metac
 
 
 class ElasticEntityLinker(EntityLinker):
-    def __init__(self, alpha=3, beta=0.2, min_score=20.0, max_results=20):
+    def __init__(self, alpha=2, beta=0.72, min_score=8.0, max_results=33):
         super().__init__()
         self.index_name = "corpus_wikidata_20240717"
 
@@ -118,12 +119,12 @@ class ElasticEntityLinker(EntityLinker):
     @staticmethod
     def get_query(entity: EntityMention):
         queries = []
-        # try:
-        #     queries.extend([c.name for c in pycountry.countries.search_fuzzy(entity.text)])
-        #     if len(queries) > 3:
-        #         queries = []
-        # except LookupError:
-        #     pass
+        try:
+            queries.extend([c.name for c in pycountry.countries.search_fuzzy(entity.text)])
+            if len(queries) > 3:
+                queries = []
+        except LookupError:
+            pass
 
         queries.extend([x.strip() for x in entity.text.split(",")])
         if entity.text.replace("'s", "") != entity.text:

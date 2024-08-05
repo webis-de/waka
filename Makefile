@@ -15,7 +15,7 @@ install_venv:
 	. venv/bin/activate; pip install --upgrade pip
 	. venv/bin/activate; pip install --upgrade setuptools wheel
 	. venv/bin/activate; pip install --no-cache-dir -r requirements.txt
-	. venv/bin/activate; python -m spacy download en_core_web_sm
+	. venv/bin/activate; python -m spacy download en_core_web_trf
 	. venv/bin/activate; python -c "import stanza; stanza.download('en')"
 	. venv/bin/activate; python -c "import nltk; nltk.download('punkt')"
 
@@ -23,7 +23,7 @@ install_novenv:
 	python3 -m pip install --upgrade pip
 	python3 -m pip install --upgrade setuptools wheel
 	python3 -m pip install --no-cache-dir -r requirements.txt
-	python3 -m spacy download en_core_web_sm
+	python3 -m spacy download en_core_web_trf
 	python3 -c "import stanza; stanza.download('en')"
 	python3 -c "import nltk; nltk.download('punkt')"
 

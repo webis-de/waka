@@ -3,6 +3,7 @@ from typing import List
 
 import numpy as np
 import requests
+import torch
 from nltk.tokenize import PunktSentenceTokenizer
 from numpy import ndarray, dtype
 from sentence_transformers.SentenceTransformer import SentenceTransformer
@@ -148,7 +149,7 @@ class BartMNLI(TripleScorer):
         # self.nli_model = AutoModelForSequenceClassification.from_pretrained('MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli')
         # self.tokenizer = AutoTokenizer.from_pretrained('MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli')
         self.classifier = pipeline("zero-shot-classification", model=self.nli_model, tokenizer=self.tokenizer,
-                                   device="cuda")
+                                   device=torch.cuda.current_device())
 
     def score(self, text: str, triples: List[Triple]) -> List[Triple]:
         labels = {}

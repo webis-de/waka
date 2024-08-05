@@ -1,7 +1,10 @@
 import abc
+import copy
+import os
+import sys
 from typing import List
 
-import requests
+from elasticsearch import Elasticsearch, AuthenticationException
 
 from waka.nlp.kg import Triple
 from waka.nlp.text_processor import TextProcessor
@@ -12,41 +15,68 @@ class RelationLinker(TextProcessor[List[Triple], List[Triple]], metaclass=abc.AB
 
 
 class ElasticRelationLinker(RelationLinker):
-
-    def __init__(self):
+    def __init__(self, alpha=2, beta=0.72, min_score=8.0, max_results=33):
         super().__init__()
-        self.search_endpoint = "https://metareal-kb.web.webis.de/api/v1/kb/property/search"
+        self.index_name = "corpus_wikidata_properties_20240717"
+
+        api_key = os.getenv("ES_API_KEY")
+        if api_key is None or api_key == "":
+            self.logger.error("Elasticsearch API key (ES_API_KEY) not set!")
+            sys.exit(1)
+
+        try:
+            self.es_client = Elasticsearch("https://elasticsearch.srv.webis.de", api_key=api_key,
+                                           retry_on_timeout=True, max_retries=10)
+        except AuthenticationException:
+            self.logger.error("Authentication to Elasticsearch failed!")
+            sys.exit(1)
+
+        self.search_template = {
+            "query": {
+                "function_score": {
+                    "query": {
+                        "query_string": {
+                            "query": None,
+                            "default_operator": "AND",
+                            "fields": [f"label^{alpha}", "search_key"],
+                            "type": "best_fields"
+                        }
+                    },
+                    "field_value_factor": {
+                        "field": "frequency",
+                        "factor": beta,
+                        "missing": 1.0,
+                        "modifier": "log1p"
+                    }
+                }
+            },
+            "from": 0,
+            "size": max_results,
+            "min_score": min_score
+        }
 
     def process(self, text: str, triples: List[Triple]) -> List[Triple]:
-        super().process(text, triples)
-        cache = {}
-        headers = {"accept": "application/json"}
+        searches = []
+        for triple in triples:
+            searches.append({"index": self.index_name})
+            query = copy.deepcopy(self.search_template)
+            query["query"]["function_score"]["query"]["query_string"]["query"] = (
+                triple.predicate.text
+            )
+            searches.append(query)
 
-        with requests.Session() as session:
-            for triple in triples:
-                retrieved_properties = []
+        results = self.es_client.msearch(searches=searches)
+        for response, triple in zip(results["responses"], triples):
+            if response["status"] != 200:
+                continue
 
-                if triple.predicate.text in cache:
-                    retrieved_properties.extend(cache[triple.predicate.text])
-                else:
-                    request_params = {"q": triple.predicate.text}
+            if len(response["hits"]["hits"]) > 0:
+                hit = response["hits"]["hits"][0]
+                triple.predicate.url = hit["_id"]
+                triple.predicate.label = hit["_source"]["label"]
+                triple.predicate.description = hit["_source"]["description"]
 
-                    response = session.get(self.search_endpoint, params=request_params, headers=headers)
-                    body = response.json()
-
-                    if body["status"] == "success":
-                        for p in body["data"]:
-                            retrieved_properties.append(p)
-
-                        cache[triple.predicate.text] = sorted(retrieved_properties, key=lambda predicate: -predicate["score"])
-
-                if len(retrieved_properties) > 0:
-                    selected = retrieved_properties[0]
-                    triple.predicate.url = selected["id"]
-                    triple.predicate.label = selected["label"]
-                    triple.predicate.description = selected["description"]
-
-            return triples
+        return triples
 
 
 

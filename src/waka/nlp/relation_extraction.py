@@ -4,7 +4,6 @@ from enum import Enum
 from typing import List, Optional
 
 from nltk.tokenize import sent_tokenize
-from openie import StanfordOpenIE
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 
 from waka.nlp.kg import Triple, Property, EntityMention
@@ -208,35 +207,3 @@ class MRebelExtractor(RelationExtractor):
     @staticmethod
     def get_resource(token: str, type: str):
         return EntityMention(url=None, text=token, start_idx=None, end_idx=None, e_type=type)
-
-
-class OpenIEExtractor(RelationExtractor):
-    def __init__(self):
-        super().__init__()
-        properties = {
-            'openie.affinity_probability_cap': 1 / 3,
-            "openie.triple.strict": True
-        }
-
-        self.client = StanfordOpenIE(properties=properties)
-        self.client.annotate("dummy")
-
-        model_url = "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2020.02.27.tar.gz"
-        self.predictor = Predictor.from_path(model_url)
-
-    def process(self, text: str, in_data: str) -> Optional[List[Triple]]:
-        # prediction = self.predictor.predict(document=text)
-
-        # document, clusters = prediction['document'], prediction['clusters']
-        # resolved_text = self.predictor.coref_resolved(text)
-
-        triples = self.client.annotate(text)
-
-        for triple in triples:
-            print(triple)
-
-
-if __name__ == '__main__':
-    re = OpenIEExtractor()
-    re.process(
-        "The Bauhaus-Universität Weimar is a university located in Weimar, Germany, and specializes in the artistic and technical fields. Established in 1860 as the Great Ducal Saxon Art School, it gained collegiate status on 3 June 1910. In 1919 the school was renamed Bauhaus by its new director Walter Gropius and it received its present name in 1996. There are more than 4000 students enrolled, with the percentage of international students above the national average at around 27%. In 2010 the Bauhaus-Universität Weimar commemorated its 150th anniversary as an art school and college in Weimar. In 2019 the university celebrated the centenary of the founding of the Bauhaus, together with partners all over the world. ")
