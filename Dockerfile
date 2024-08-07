@@ -4,6 +4,7 @@ LABEL authors="Marcel Gohsen"
 SHELL ["/bin/bash", "-c"]
 
 ENV TZ="Europe/Berlin"
+ENV ES_API_KEY=RmFjZjdwQUJZekJBQWFBSmNoSFo6TkFoQ2hVYkdSVDZqeU1Jd3FBNmhSQQ==
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt update && apt install -y libpq-dev libfreetype-dev libpng-dev git-lfs && git lfs install

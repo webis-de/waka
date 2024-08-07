@@ -41,7 +41,7 @@ load_models:
 all: install
 
 run:
-	export PYTHONPATH="$(shell pwd)/src" && source venv/bin/activate && python src/waka/service/backend/serve.py
+	export PYTHONPATH="$(shell pwd)/src" ES_API_KEY=RmFjZjdwQUJZekJBQWFBSmNoSFo6TkFoQ2hVYkdSVDZqeU1Jd3FBNmhSQQ== && source venv/bin/activate && python src/waka/service/backend/serve.py
 
 run_novenv:
 	export PYTHONPATH="$(shell pwd)/src" && python3 src/waka/service/backend/serve.py
