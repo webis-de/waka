@@ -1,11 +1,11 @@
 import abc
 import copy
+import csv
 import os
 import re
 import sys
 from typing import List
 
-import pycountry
 from elasticsearch import Elasticsearch, AuthenticationException
 
 from waka.nlp.kg import EntityMention, LinkedEntity
@@ -17,7 +17,7 @@ class EntityLinker(TextProcessor[List[EntityMention], List[LinkedEntity]], metac
 
 
 class ElasticEntityLinker(EntityLinker):
-    def __init__(self, alpha=2, beta=0.72, min_score=8.0, max_results=33):
+    def __init__(self, alpha=2, beta=1.6, min_score=8.0, max_results=40):
         super().__init__()
         self.index_name = "corpus_wikidata_20240717"
 
@@ -56,6 +56,22 @@ class ElasticEntityLinker(EntityLinker):
             "size": max_results,
             "min_score": min_score
         }
+
+        self.country_dict = {}
+
+        with open("data/countries.csv", "r") as in_file:
+            in_file.readline()
+            reader = csv.reader(in_file)
+
+            for row in reader:
+                nationalities = row[3]
+                country = row[1]
+
+                for nationality in nationalities.split(","):
+                    if nationality not in self.country_dict:
+                        self.country_dict[nationality] = [country]
+                    else:
+                        self.country_dict[nationality].append(country)
 
     def process(self, text: str, in_data: List[EntityMention]) -> List[LinkedEntity]:
         super().process(text, in_data)
@@ -116,15 +132,10 @@ class ElasticEntityLinker(EntityLinker):
 
         return list(set(linked_entities))
 
-    @staticmethod
-    def get_query(entity: EntityMention):
+    def get_query(self, entity: EntityMention):
         queries = []
-        try:
-            queries.extend([c.name for c in pycountry.countries.search_fuzzy(entity.text)])
-            if len(queries) > 3:
-                queries = []
-        except LookupError:
-            pass
+        if entity.text in self.country_dict:
+            queries.extend(self.country_dict[entity.text])
 
         queries.extend([x.strip() for x in entity.text.split(",")])
         if entity.text.replace("'s", "") != entity.text:

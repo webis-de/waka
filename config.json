@@ -2,7 +2,7 @@
   "title": "WAKA",
   "description": "WAKA - Assisted Knowledge Graph Authoring System",
   "summary": "Encyclopedic knowledge graphs, such as Wikidata, host an extensive repository of millions of knowledge statements. However, domain-specific knowledge from fields such as history, physics, or medicine is significantly underrepresented in those graphs. Although few domain-specific knowledge graphs exist (e.g., Pubmed for medicine), developing specialized retrieval applications for many domains still requires constructing knowledge graphs from scratch. To facilitate knowledge graph construction, we introduce WAKA: a Web application that allows domain experts to create knowledge graphs through the medium with which they are most familiar: natural language.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "contact": {
     "name": "Marcel Gohsen",
     "url": "https://www.uni-weimar.de/en/media/chairs/computer-science-department/webis/people/gohsen/",

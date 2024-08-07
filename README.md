@@ -129,12 +129,12 @@ Performance is measured on the test set of the RED^FM dataset (446 texts).
 | Step | Task                       | Macro<br/>Precision | Macro<br/>Recall | Macro<br/>F1 | Micro<br/>Precision | Micro<br/>Recall | Micro<br/>F1 |
 |:----:|----------------------------|:-------------------:|:----------------:|:------------:|:-------------------:|:----------------:|:------------:|
 |  1   | Entity Recognition         |       0.0675        |      0.9162      |    0.1220    |       0.1544        |      0.9892      |    0.2671    |
-|  2   | Entity Retrieval           |       0.0027        |      0.8212      |    0.0054    |       0.0021        |      0.8287      |    0.0042    |
-|  3   | Entity Reranking           |       0.0165        |      0.7487      |    0.0313    |       0.0088        |      0.7544      |    0.0175    |
+|  2   | Entity Retrieval           |       0.0021        |      0.8258      |    0.0042    |       0.0016        |      0.8340      |    0.0042    |
+|  3   | Entity Reranking           |       0.0110        |      0.7849      |    0.0212    |       0.0063        |      0.7907      |    0.0124    |
 |  4   | Relation Extraction        |       0.3033        |      0.7775      |    0.4069    |       0.5505        |      1.0000      |    0.7101    |
 |  5   | Relation Linking           |       0.3033        |      0.7775      |    0.4069    |       0.5505        |      1.0000      |    0.7101    |
-|  6   | Knowledge Fusion           |       0.1582        |      0.2777      |    0.1801    |       0.1482        |      0.2771      |    0.1931    |
-|  7   | Natural Language Inference |       0.2130        |      0.2963      |    0.2233    |       0.2082        |      0.2994      |    0.2456    |
+|  6   | Knowledge Fusion           |       0.1548        |      0.3028      |    0.1824    |       0.1425        |      0.3065      |    0.1946    |
+|  7   | Natural Language Inference |       0.2057        |      0.3284      |    0.2270    |       0.1999        |      0.3325      |    0.2497    |
 
 
 ## Cite this work

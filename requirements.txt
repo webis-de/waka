@@ -18,7 +18,6 @@ cachetools
 flair
 number-parser
 sentence-transformers==2.2.2
-pycountry
 click
 levenshtein
 scipy<1.13
