@@ -21,6 +21,7 @@ RUN make clean install_novenv
 COPY config.json  /waka/
 COPY src/ /waka/src/
 COPY web/ /waka/web/
+COPY data/countries.csv /waka/data/countries.csv
 
 EXPOSE 8000
 
